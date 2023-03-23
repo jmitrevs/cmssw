@@ -17,7 +17,7 @@
 namespace l1ct {
   namespace tdr_regionizer {
 
-    inline int dphi_wrap(int local_phi) {
+    inline int phi_wrap(int local_phi) {
       if (local_phi > l1ct::Scales::INTPHI_PI)
         local_phi -= l1ct::Scales::INTPHI_TWOPI;
       else if (local_phi <= -l1ct::Scales::INTPHI_PI)
@@ -30,7 +30,7 @@ namespace l1ct {
     class PipeObject {
     public:
       PipeObject() {}
-      PipeObject(const T& obj, std::vector<size_t> srIndices, int glbphi, int glbeta, unsigned int clk);
+      PipeObject(const T& obj, std::vector<size_t> srIndices, int glbeta, int glbphi, unsigned int clk);
 
       unsigned int getClock() const { return linkobjclk_; }
       void setClock(unsigned int clock) { linkobjclk_ = clock; }
@@ -38,7 +38,7 @@ namespace l1ct {
       size_t getNextSRIndex() const { return srIndices_.at(objcount_); }
       unsigned int getCount() const { return objcount_; }
       void incCount() { objcount_++; }
-      int getPt() const { return obj_.hwPt.to_int(); }
+      int getPt() const { return obj_.intPt(); }
       int getGlbPhi() const { return glbphi_; }
       int getGlbEta() const { return glbeta_; }
 

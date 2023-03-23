@@ -199,24 +199,25 @@ void l1ct::TDRRegionizerEmulator::run(const RegionizerDecodedInputs& in, std::ve
     tkRegionizers_[ie].reset();
     tkRegionizers_[ie].setPipes(tk_links_in);
     tkRegionizers_[ie].initTimes();
+    tkRegionizers_[ie].run();
+
+    emCaloRegionizers_[ie].reset();
+    emCaloRegionizers_[ie].setPipes(em_links_in);
+    emCaloRegionizers_[ie].initTimes();
     if (debug_) {
       dbgCout() << "Big region: " << ie << " SECTORS/LINKS " << std::endl;
       dbgCout() << "\tsector\titem\tpt\teta\tphi" << std::endl;
-      for (unsigned int sector = 0; sector < tk_links_in.size(); sector++) {
-        for (unsigned int j = 0; j < tk_links_in[sector].size(); j++) {
-          dbgCout() << "\t" << sector << "\t" << j << "\t " << tk_links_in[sector][j].hwPt.to_int() << "\t"
-                    << tk_links_in[sector][j].hwEta.to_int() << "\t" << tk_links_in[sector][j].hwPhi.to_int()
+      for (unsigned int sector = 0; sector < em_links_in.size(); sector++) {
+        for (unsigned int j = 0; j < em_links_in[sector].size(); j++) {
+          dbgCout() << "\t" << sector << "\t" << j << "\t " << em_links_in[sector][j].intPt() << "\t"
+                    << em_links_in[sector][j].intEta() << "\t" << em_links_in[sector][j].intPhi()
                     << std::endl;
         }
         dbgCout() << "-------------------------------" << std::endl;
       }
     }
-    tkRegionizers_[ie].run(debug_);
 
-    emCaloRegionizers_[ie].reset();
-    emCaloRegionizers_[ie].setPipes(em_links_in);
-    emCaloRegionizers_[ie].initTimes();
-    emCaloRegionizers_[ie].run();
+    emCaloRegionizers_[ie].run(debug_);
 
     hadCaloRegionizers_[ie].reset();
     hadCaloRegionizers_[ie].setPipes(calo_links_in);

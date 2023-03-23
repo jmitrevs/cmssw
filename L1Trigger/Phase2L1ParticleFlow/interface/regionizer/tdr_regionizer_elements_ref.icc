@@ -2,7 +2,7 @@
 
 template <typename T>
 l1ct::tdr_regionizer::PipeObject<T>::PipeObject(
-    const T& obj, std::vector<size_t> srIndices, int glbphi, int glbeta, unsigned int clk)
+    const T& obj, std::vector<size_t> srIndices, int glbeta, int glbphi, unsigned int clk)
     : obj_(obj), srIndices_(srIndices), glbeta_(glbeta), glbphi_(glbphi), linkobjclk_(clk) {
   objcount_ = 0;
 }
@@ -135,7 +135,7 @@ std::vector<size_t> l1ct::tdr_regionizer::Regionizer<T>::getSmallRegions(int glb
   // only iterate over regions covered by board
   for (size_t i = 0; i < regionmap_.size(); i++) {
     auto regionidx = regionmap_[i];
-    int regphi = dphi_wrap(glbphi - regions_[regionidx].intPhiCenter());
+    int regphi = phi_wrap(glbphi - regions_[regionidx].intPhiCenter());
     int regeta = glbeta - regions_[regionidx].intEtaCenter();
 
     if (regions_[regionidx].isInside(regeta, regphi)) {
@@ -220,7 +220,22 @@ void l1ct::tdr_regionizer::Regionizer<T>::initTimes() {
 template <typename T>
 void l1ct::tdr_regionizer::Regionizer<T>::addToSmallRegion(unsigned int linkNum, unsigned int index) {
   auto pipeObj = pipes_[linkNum].getObj(index);
-  smallRegionObjects_[pipeObj.getNextSRIndex()].push_back(pipeObj.getRawObj());
+
+  auto rawObj = pipeObj.getRawObj();
+
+  // in small region, the relative eta and phi are based on a different center, so need to update
+  auto realRegIdx = regionmap_[pipeObj.getNextSRIndex()];
+  auto etaC = regions_[realRegIdx].intEtaCenter();
+  auto phiC = regions_[realRegIdx].intPhiCenter();
+
+  int locEta = pipeObj.getGlbEta() - etaC;
+  int locPhi = phi_wrap(pipeObj.getGlbPhi() - phiC);
+
+  rawObj.hwEta = locEta;
+  rawObj.hwPhi = locPhi;
+
+  smallRegionObjects_[pipeObj.getNextSRIndex()].push_back(rawObj);
+
 }
 
 template <typename T>
@@ -318,11 +333,15 @@ void l1ct::tdr_regionizer::Regionizer<T>::printDebug(int count) const {
   }
   dbgCout() << "SMALL REGIONS" << std::endl;
   for (unsigned int region = 0; region < neta_ * nphi_; region++) {
-    dbgCout() << count << "\tregion\titem\tpt\tloceta\tlocphi" << std::endl;
+    dbgCout() << count << "\tregion\t\titem\tpt\tloceta\tlocphi" << std::endl;
+    auto realRegIdx = regionmap_[region];
+    auto etaC = regions_[realRegIdx].intEtaCenter();
+    auto phiC = regions_[realRegIdx].intPhiCenter();
     for (unsigned int j = 0; j < smallRegionObjects_[region].size(); j++) {
-      dbgCout() << "\t" << region << " " << j << "\t" << smallRegionObjects_[region][j].hwPt.to_int() << "\t"
-                << smallRegionObjects_[region][j].hwEta.to_int() << "\t"
-                << smallRegionObjects_[region][j].hwPhi.to_int() << std::endl;
+      dbgCout() << "\t" << region << " (" << etaC << ", " << phiC << ")\t" << j << "\t"
+                << smallRegionObjects_[region][j].intPt() << "\t"
+                << smallRegionObjects_[region][j].intEta() << "\t"
+                << smallRegionObjects_[region][j].intPhi() << std::endl;
     }
     dbgCout() << "-------------------------------" << std::endl;
   }
