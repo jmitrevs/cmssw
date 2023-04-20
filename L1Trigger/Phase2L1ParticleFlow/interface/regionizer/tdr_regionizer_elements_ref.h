@@ -99,7 +99,8 @@ namespace l1ct {
                  unsigned int maxobjects,
                  int bigRegionMin,
                  int bigRegionMax,  // the phi range covered by this board
-                 int nclocks);
+                 int nclocks,
+                 bool debug = false);
 
       void initSectors(const std::vector<DetectorSector<T>>& sectors);
       void initSectors(const DetectorSector<T>& sector);
@@ -145,7 +146,7 @@ namespace l1ct {
       /// 'put' object in small region
       void addToSmallRegion(unsigned int linkNum, unsigned int index = 0);
 
-      void run(bool debug = false);
+      void run();
 
       void reset();
 
@@ -180,6 +181,8 @@ namespace l1ct {
       int bigRegionMax_;
       /// the number of clocks to receive one event
       int nclocks_;
+
+      bool debug_;
 
       /// the region information assopciated with each input sector
       std::vector<l1ct::PFRegionEmu> sectors_;

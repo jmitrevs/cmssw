@@ -34,7 +34,8 @@ l1ct::tdr_regionizer::Regionizer<T>::Regionizer(unsigned int neta,
                                                 unsigned int maxobjects,
                                                 int bigRegionMin,
                                                 int bigRegionMax,
-                                                int nclocks)
+                                                int nclocks,
+                                                bool debug)
     : neta_(neta),
       nphi_(nphi),
       nregions_(nregions),
@@ -42,7 +43,8 @@ l1ct::tdr_regionizer::Regionizer<T>::Regionizer(unsigned int neta,
       nsectors_(0),
       bigRegionMin_(bigRegionMin),
       bigRegionMax_(bigRegionMax),
-      nclocks_(nclocks) {
+      nclocks_(nclocks),
+      debug_(debug) {
   smallRegionObjects_.resize(neta_ * nphi_);
 }
 
@@ -239,9 +241,9 @@ void l1ct::tdr_regionizer::Regionizer<T>::addToSmallRegion(unsigned int linkNum,
 }
 
 template <typename T>
-void l1ct::tdr_regionizer::Regionizer<T>::run(bool debug) {
+void l1ct::tdr_regionizer::Regionizer<T>::run() {
   unsigned int loopCount = 0;
-  if (debug)
+  if (debug_)
     printDebug(loopCount);
   while (loopCount < 972) {  //this is the max allowable if nothing ever blocks
     //init min time, pipe, and link index
@@ -254,6 +256,10 @@ void l1ct::tdr_regionizer::Regionizer<T>::run(bool debug) {
     for (unsigned int sector = 0; sector < getSize(); ++sector) {
       if (timeOfNextObject_[sector] >= 0 && smallRegionObjects_[getPipeIndexForObject(sector)].size() == maxobjects_) {
         //pipe is full so proceed to next object
+        if (debug_) {
+          dbgCout() << "pipe full for sector " << sector << " and pipe index " << getPipeIndexForObject(sector) << std::endl;
+        }
+
         //'remove' the selected object from its link
         timeOfNextObject_[sector] = popLinkObject(sector, timeOfNextObject_[sector]);
       }  //end pipe-full handling loop
@@ -275,9 +281,9 @@ void l1ct::tdr_regionizer::Regionizer<T>::run(bool debug) {
         ++timeOfNextObject_[sector];
       }
     }
-
-    // dbgCout() << " After, minLinkIndex = " << minLinkIndex << ", minTime = " << minTime << ", minPipeIndex = " << minPipeIndex << std::endl;
-
+    if (debug_) {
+      dbgCout() << " After, minLinkIndex = " << minLinkIndex << ", minTime = " << minTime << ", minPipeIndex = " << minPipeIndex << std::endl;
+    }
     if (minLinkIndex < 0)
       break;  //exit case
 
@@ -293,7 +299,7 @@ void l1ct::tdr_regionizer::Regionizer<T>::run(bool debug) {
     ++loopCount;
   }  //end main loop
 
-  if (debug)
+  if (debug_)
     printDebug(loopCount);
 }
 
@@ -323,11 +329,12 @@ std::map<size_t, std::vector<T>> l1ct::tdr_regionizer::Regionizer<T>::fillRegion
 template <typename T>
 void l1ct::tdr_regionizer::Regionizer<T>::printDebug(int count) const {
   dbgCout() << "PIPES, (for " << getSize() << " sectors)" << std::endl;
-  dbgCout() << count << "\tsector\titem\tpt\teta\tphi" << std::endl;
+  dbgCout() << count << "\tsector\titem\tpt\teta\tphi\tclock" << std::endl;
   for (unsigned int sector = 0; sector < getSize(); sector++) {
     for (unsigned int j = 0; j < getPipeSize(sector); j++) {
       dbgCout() << "\t" << sector << "\t" << j << "\t" << pipes_[sector].getPt(j) << "\t" << pipes_[sector].getGlbEta(j)
-                << "\t" << pipes_[sector].getGlbPhi(j) << std::endl;
+                << "\t" << pipes_[sector].getGlbPhi(j)
+                << "\t" << pipes_[sector].getClock(j) << std::endl;
     }
     dbgCout() << "-------------------------------" << std::endl;
   }
