@@ -35,6 +35,7 @@ l1ct::tdr_regionizer::Regionizer<T>::Regionizer(unsigned int neta,
                                                 int bigRegionMin,
                                                 int bigRegionMax,
                                                 int nclocks,
+                                                int ndup,
                                                 bool debug)
     : neta_(neta),
       nphi_(nphi),
@@ -44,6 +45,7 @@ l1ct::tdr_regionizer::Regionizer<T>::Regionizer(unsigned int neta,
       bigRegionMin_(bigRegionMin),
       bigRegionMax_(bigRegionMax),
       nclocks_(nclocks),
+      ndup_(ndup),
       debug_(debug) {
   smallRegionObjects_.resize(neta_ * nphi_);
 }
@@ -53,7 +55,7 @@ void l1ct::tdr_regionizer::Regionizer<T>::initSectors(const std::vector<Detector
   assert(nsectors_ == 0);
   nsectors_ = sectors.size();
   sectors_.resize(nsectors_);
-  pipes_.resize(nsectors_);
+  pipes_.resize(nsectors_ * ndup_);
   for (unsigned int i = 0; i < nsectors_; ++i) {
     sectors_[i] = sectors[i].region;
   }
@@ -64,7 +66,7 @@ void l1ct::tdr_regionizer::Regionizer<T>::initSectors(const DetectorSector<T>& s
   assert(nsectors_ == 0);
   nsectors_ = 1;
   sectors_.resize(1, sector.region);
-  pipes_.resize(nsectors_);
+  pipes_.resize(nsectors_ * ndup_);
 }
 
 // this function is for sorting small regions first
@@ -148,31 +150,32 @@ std::vector<size_t> l1ct::tdr_regionizer::Regionizer<T>::getSmallRegions(int glb
 }
 
 template <typename T>
-void l1ct::tdr_regionizer::Regionizer<T>::addToPipe(const T& obj, unsigned int sector) {
-  assert(sector < getSize());
+void l1ct::tdr_regionizer::Regionizer<T>::addToPipe(const T& obj, unsigned int pipe) {
+  assert(pipe < getSize());
+  const unsigned int sector = pipe / ndup_;
   auto glbphi = sectors_[sector].hwGlbPhiOf(obj).to_int();
   auto glbeta = sectors_[sector].hwGlbEtaOf(obj).to_int();
   // get the SR indices that this object should go into
   std::vector<size_t> srIndices = getSmallRegions(glbeta, glbphi);
   if (!srIndices.empty()) {
-    pipes_[sector].addObj(obj, srIndices, glbeta, glbphi);
+    pipes_[pipe].addObj(obj, srIndices, glbeta, glbphi);
   }
 }
 
 template <typename T>
-void l1ct::tdr_regionizer::Regionizer<T>::setPipe(const std::vector<T>& objvec, unsigned int sector) {
-  assert(sector < getSize());
-  pipes_[sector].reset();
+void l1ct::tdr_regionizer::Regionizer<T>::setPipe(const std::vector<T>& objvec, unsigned int pipe) {
+  assert(pipe < getSize());
+  pipes_[pipe].reset();
   for (unsigned int i = 0; i < objvec.size(); i++) {
-    addToPipe(objvec[i], sector);
+    addToPipe(objvec[i], pipe);
   }
 }
 
 template <typename T>
 void l1ct::tdr_regionizer::Regionizer<T>::setPipes(const std::vector<std::vector<T>>& objvecvec) {
   assert(getSize() == objvecvec.size());
-  for (unsigned int sector = 0; sector < getSize(); sector++) {
-    setPipe(objvecvec[sector], sector);
+  for (unsigned int pipe = 0; pipe < getSize(); pipe++) {
+    setPipe(objvecvec[pipe/ndupe_], pipe);
   }
 }
 
@@ -182,7 +185,7 @@ int l1ct::tdr_regionizer::Regionizer<T>::getPipeTime(int linkIndex,
                                                      int linkTimeOfObject,
                                                      int linkAlgoClockRunningTime) {
   const int LINK_TO_ALGO_CLK_OFFSET = 2;  //13; // in units of algo clock
-  int linkObjectArrival = (nsectors_ - 1 - linkIndex) + LINK_TO_ALGO_CLK_OFFSET + linkTimeOfObject;
+  int linkObjectArrival = (getSize() - 1 - linkIndex) + LINK_TO_ALGO_CLK_OFFSET + linkTimeOfObject;
 
   return (linkAlgoClockRunningTime < 0 || linkObjectArrival > linkAlgoClockRunningTime + 4)
              ? linkObjectArrival
@@ -210,9 +213,9 @@ int l1ct::tdr_regionizer::Regionizer<T>::popLinkObject(int linkIndex, int curren
 
 template <typename T>
 void l1ct::tdr_regionizer::Regionizer<T>::initTimes() {
-  for (unsigned int sector = 0; sector < getSize(); ++sector) {
-    if (getPipeSize(sector)) {
-      timeOfNextObject_.push_back(timeNextFromIndex(sector, -1));
+  for (unsigned int pipe = 0; pipe < getSize(); ++pipe) {
+    if (getPipeSize(pipe)) {
+      timeOfNextObject_.push_back(timeNextFromIndex(pipe, -1));
     } else {
       timeOfNextObject_.push_back(-1);
     }
@@ -253,32 +256,32 @@ void l1ct::tdr_regionizer::Regionizer<T>::run() {
     int minTime = 0;
 
     //do pipe-full handling
-    for (unsigned int sector = 0; sector < getSize(); ++sector) {
-      if (timeOfNextObject_[sector] >= 0 && smallRegionObjects_[getPipeIndexForObject(sector)].size() == maxobjects_) {
+    for (unsigned int pipe = 0; pipe < getSize(); ++pipe) {
+      if (timeOfNextObject_[pipe] >= 0 && smallRegionObjects_[getPipeIndexForObject(pipe)].size() == maxobjects_) {
         //pipe is full so proceed to next object
         if (debug_) {
-          dbgCout() << "pipe full for sector " << sector << " and pipe index " << getPipeIndexForObject(sector) << std::endl;
+          dbgCout() << "pipe full for pipe " << pipe << " and pipe index " << getPipeIndexForObject(pipe) << std::endl;
         }
 
         //'remove' the selected object from its link
-        timeOfNextObject_[sector] = popLinkObject(sector, timeOfNextObject_[sector]);
+        timeOfNextObject_[pipe] = popLinkObject(pipe, timeOfNextObject_[pipe]);
       }  //end pipe-full handling loop
     }
 
     //do find object handling
-    for (unsigned int sector = 0; sector < getSize(); ++sector) {
-      // dbgCout() << "secotor = " << sector << ", timeOfNextObject_[sector] = " << timeOfNextObject_[sector]
+    for (unsigned int pipe = 0; pipe < getSize(); ++pipe) {
+      // dbgCout() << "secotor = " << pipe << ", timeOfNextObject_[pipe] = " << timeOfNextObject_[pipe]
       //   << ", minLinkIndex = " << minLinkIndex << ", minTime = " << minTime << ", minPipeIndex = " << minPipeIndex << std::endl;
-      if (timeOfNextObject_[sector] >= 0 && (minLinkIndex == -1 || timeOfNextObject_[sector] < minTime)) {
+      if (timeOfNextObject_[pipe] >= 0 && (minLinkIndex == -1 || timeOfNextObject_[pipe] < minTime)) {
         //found new 'selected' link object and pipe
-        minPipeIndex = getHardwarePipeIndexForObject(sector);
-        minTime = timeOfNextObject_[sector];
-        minLinkIndex = sector;
-      } else if (getPipeSize(sector) && minLinkIndex >= 0 &&
-                 minPipeIndex == static_cast<int>(getHardwarePipeIndexForObject(sector)) &&
-                 timeOfNextObject_[sector] == minTime) {
+        minPipeIndex = getHardwarePipeIndexForObject(pipe);
+        minTime = timeOfNextObject_[pipe];
+        minLinkIndex = pipe;
+      } else if (getPipeSize(pipe) && minLinkIndex >= 0 &&
+                 minPipeIndex == static_cast<int>(getHardwarePipeIndexForObject(pipe)) &&
+                 timeOfNextObject_[pipe] == minTime) {
         //have pipe conflict, so need to wait a clock
-        ++timeOfNextObject_[sector];
+        ++timeOfNextObject_[pipe];
       }
     }
     if (debug_) {
@@ -328,13 +331,13 @@ std::map<size_t, std::vector<T>> l1ct::tdr_regionizer::Regionizer<T>::fillRegion
 
 template <typename T>
 void l1ct::tdr_regionizer::Regionizer<T>::printDebug(int count) const {
-  dbgCout() << "PIPES, (for " << getSize() << " sectors)" << std::endl;
-  dbgCout() << count << "\tsector\titem\tpt\teta\tphi\tclock" << std::endl;
-  for (unsigned int sector = 0; sector < getSize(); sector++) {
-    for (unsigned int j = 0; j < getPipeSize(sector); j++) {
-      dbgCout() << "\t" << sector << "\t" << j << "\t" << pipes_[sector].getPt(j) << "\t" << pipes_[sector].getGlbEta(j)
-                << "\t" << pipes_[sector].getGlbPhi(j)
-                << "\t" << pipes_[sector].getClock(j) << std::endl;
+  dbgCout() << "PIPES, (for " << getSize() << " pipes)" << std::endl;
+  dbgCout() << count << "\tpipe\titem\tpt\teta\tphi\tclock" << std::endl;
+  for (unsigned int pipe = 0; pipe < getSize(); pipe++) {
+    for (unsigned int j = 0; j < getPipeSize(pipe); j++) {
+      dbgCout() << "\t" << pipe << "\t" << j << "\t" << pipes_[pipe].getPt(j) << "\t" << pipes_[pipe].getGlbEta(j)
+                << "\t" << pipes_[pipe].getGlbPhi(j)
+                << "\t" << pipes_[pipe].getClock(j) << std::endl;
     }
     dbgCout() << "-------------------------------" << std::endl;
   }

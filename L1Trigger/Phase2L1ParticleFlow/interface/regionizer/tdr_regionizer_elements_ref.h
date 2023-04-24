@@ -100,9 +100,11 @@ namespace l1ct {
                  int bigRegionMin,
                  int bigRegionMax,  // the phi range covered by this board
                  int nclocks,
+                 int ndup,  // how much one duplicates the inputs (to increase processing bandwidth)
                  bool debug = false);
 
-      void initSectors(const std::vector<DetectorSector<T>>& sectors);
+      // ndup is how many pipes to make per sector. The default is one pipe per sector.
+      void initSectors(const std::vector<DetectorSector<T>>& sectors, int ndup=1);
       void initSectors(const DetectorSector<T>& sector);
       void initRegions(const std::vector<PFInputRegion>& regions);
 

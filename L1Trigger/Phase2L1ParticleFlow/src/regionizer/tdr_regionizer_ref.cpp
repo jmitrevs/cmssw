@@ -57,8 +57,9 @@ void l1ct::TDRRegionizerEmulator::initSectorsAndRegions(const RegionizerDecodedI
   for (unsigned int i = 0; i < nBigRegions_; i++) {
     tkRegionizers_.emplace_back(
         netaInBR_, nphiInBR_, nregions_, ntk_, bigRegionEdges_[i], bigRegionEdges_[i + 1], nclocks_);
+    // duplicate input fibers to increase to increasee the throughput, since lots of data comes in per fiber
     hadCaloRegionizers_.emplace_back(
-        netaInBR_, nphiInBR_, nregions_, ncalo_, bigRegionEdges_[i], bigRegionEdges_[i + 1], nclocks_);
+        netaInBR_, nphiInBR_, nregions_, ncalo_, bigRegionEdges_[i], bigRegionEdges_[i + 1], nclocks_, 2);
     emCaloRegionizers_.emplace_back(
         netaInBR_, nphiInBR_, nregions_, nem_, bigRegionEdges_[i], bigRegionEdges_[i + 1], nclocks_);
     muRegionizers_.emplace_back(
@@ -77,7 +78,7 @@ void l1ct::TDRRegionizerEmulator::initSectorsAndRegions(const RegionizerDecodedI
   }
   if (ncalo_) {
     for (unsigned int i = 0; i < nBigRegions_; i++) {
-      hadCaloRegionizers_[i].initSectors(in.hadcalo);
+      hadCaloRegionizers_[i].initSectors(in.hadcalo, 2);
       hadCaloRegionizers_[i].initRegions(out);
     }
   }
