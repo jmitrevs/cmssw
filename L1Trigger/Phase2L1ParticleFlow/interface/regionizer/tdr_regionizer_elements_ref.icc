@@ -166,16 +166,17 @@ template <typename T>
 void l1ct::tdr_regionizer::Regionizer<T>::setPipe(const std::vector<T>& objvec, unsigned int pipe) {
   assert(pipe < getSize());
   pipes_[pipe].reset();
-  for (unsigned int i = 0; i < objvec.size(); i++) {
+  unsigned int dupNum = pipe % ndup_;
+  for (unsigned int i = dupNum; i < objvec.size(); i += ndup_) {
     addToPipe(objvec[i], pipe);
   }
 }
 
 template <typename T>
 void l1ct::tdr_regionizer::Regionizer<T>::setPipes(const std::vector<std::vector<T>>& objvecvec) {
-  assert(getSize() == objvecvec.size());
+  assert(getSize() == objvecvec.size() * ndup_);
   for (unsigned int pipe = 0; pipe < getSize(); pipe++) {
-    setPipe(objvecvec[pipe/ndupe_], pipe);
+    setPipe(objvecvec[pipe/ndup_], pipe);
   }
 }
 

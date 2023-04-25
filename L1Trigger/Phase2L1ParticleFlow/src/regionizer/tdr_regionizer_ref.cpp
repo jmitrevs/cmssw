@@ -78,7 +78,7 @@ void l1ct::TDRRegionizerEmulator::initSectorsAndRegions(const RegionizerDecodedI
   }
   if (ncalo_) {
     for (unsigned int i = 0; i < nBigRegions_; i++) {
-      hadCaloRegionizers_[i].initSectors(in.hadcalo, 2);
+      hadCaloRegionizers_[i].initSectors(in.hadcalo);
       hadCaloRegionizers_[i].initRegions(out);
     }
   }

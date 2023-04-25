@@ -100,11 +100,10 @@ namespace l1ct {
                  int bigRegionMin,
                  int bigRegionMax,  // the phi range covered by this board
                  int nclocks,
-                 int ndup,  // how much one duplicates the inputs (to increase processing bandwidth)
+                 int ndup = 1,  // how much one duplicates the inputs (to increase processing bandwidth)
                  bool debug = false);
 
-      // ndup is how many pipes to make per sector. The default is one pipe per sector.
-      void initSectors(const std::vector<DetectorSector<T>>& sectors, int ndup=1);
+      void initSectors(const std::vector<DetectorSector<T>>& sectors);
       void initSectors(const DetectorSector<T>& sector);
       void initRegions(const std::vector<PFInputRegion>& regions);
 
@@ -183,6 +182,8 @@ namespace l1ct {
       int bigRegionMax_;
       /// the number of clocks to receive one event
       int nclocks_;
+      /// How many pipes per link (default 1)
+      int ndup_;
 
       bool debug_;
 
@@ -195,9 +196,10 @@ namespace l1ct {
       /// indices of regions that are in the big region (board)
       std::vector<size_t> regionmap_;
 
-      /// One pipe per each sector (link). These do not correspond to the firmware pipes
+      /// The pipes. There are ndup_ pipes per link/sector
       std::vector<Pipe<T>> pipes_;
-      /// One entry per sector (= link = pipe). If the pipe is empty, this is always -1
+
+      /// One entry per pipe. If the pipe is empty, this is always -1
       std::vector<int> timeOfNextObject_;
 
       /// The objects in each small region handled in board; Indexing corresponds to that in regionmap_
