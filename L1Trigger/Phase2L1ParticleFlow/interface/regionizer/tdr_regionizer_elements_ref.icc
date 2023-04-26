@@ -8,15 +8,20 @@ l1ct::tdr_regionizer::PipeObject<T>::PipeObject(
 }
 
 template <typename T>
-void l1ct::tdr_regionizer::Pipe<T>::addObj(T obj, std::vector<size_t> srIndices, int glbeta, int glbphi) {
-  data_.emplace_back(obj, srIndices, glbeta, glbphi, clkindex_++);
+void l1ct::tdr_regionizer::Pipe<T>::addObj(T obj, std::vector<size_t> srIndices, int glbeta, int glbphi, unsigned int dupNum, unsigned int ndup) {
+  // dupNum is the duplicate number of this pipe (int range 0 to ndup_-1)
+  data_.emplace_back(obj, srIndices, glbeta, glbphi, clkindex_ + dupNum);
+  clkindex_ += ndup;
 }
 //explicit for tracker to handle clocking
 template <>
 inline void l1ct::tdr_regionizer::Pipe<l1ct::TkObjEmu>::addObj(l1ct::TkObjEmu obj,
                                                                std::vector<size_t> srIndices,
                                                                int glbeta,
-                                                               int glbphi) {
+                                                               int glbphi,
+                                                               unsigned int dupNum,
+                                                               unsigned int ndup) {
+  assert(ndup == 1);  // don't currently support duplicates for tracks
   data_.emplace_back(obj, srIndices, glbeta, glbphi, clkindex_++);
   if (clkindex_ % 3 == 2)
     clkindex_++;  //this is for tracker, could I get this generically maybe?
@@ -154,7 +159,7 @@ std::vector<size_t> l1ct::tdr_regionizer::Regionizer<T>::getSmallRegions(int glb
 }
 
 template <typename T>
-void l1ct::tdr_regionizer::Regionizer<T>::addToPipe(const T& obj, unsigned int pipe) {
+void l1ct::tdr_regionizer::Regionizer<T>::addToPipe(const T& obj, unsigned int pipe, unsigned int dupNum) {
   assert(pipe < getSize());
   const unsigned int sector = pipe / ndup_;
   auto glbphi = sectors_[sector].hwGlbPhiOf(obj).to_int();
@@ -162,7 +167,7 @@ void l1ct::tdr_regionizer::Regionizer<T>::addToPipe(const T& obj, unsigned int p
   // get the SR indices that this object should go into
   std::vector<size_t> srIndices = getSmallRegions(glbeta, glbphi);
   if (!srIndices.empty()) {
-    pipes_[pipe].addObj(obj, srIndices, glbeta, glbphi);
+    pipes_[pipe].addObj(obj, srIndices, glbeta, glbphi, dupNum, ndup_);
   }
 }
 
@@ -172,7 +177,7 @@ void l1ct::tdr_regionizer::Regionizer<T>::setPipe(const std::vector<T>& objvec, 
   pipes_[pipe].reset();
   unsigned int dupNum = pipe % ndup_;
   for (unsigned int i = dupNum; i < objvec.size(); i += ndup_) {
-    addToPipe(objvec[i], pipe);
+    addToPipe(objvec[i], pipe, dupNum);
   }
 }
 

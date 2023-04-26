@@ -59,7 +59,7 @@ namespace l1ct {
     public:
       Pipe(unsigned int nphi = 9) : clkindex_(0), nphi_(nphi) {}
 
-      void addObj(T obj, std::vector<size_t> srs, int glbeta, int glbphi);
+      void addObj(T obj, std::vector<size_t> srs, int glbeta, int glbphi, unsigned int dupNum, unsigned int ndup);
 
       PipeObject<T>& getObj(unsigned int index = 0) { return data_[index]; }
       const PipeObject<T>& getObj(unsigned int index = 0) const { return data_[index]; }
@@ -115,7 +115,7 @@ namespace l1ct {
 
       std::vector<size_t> getSmallRegions(int glbeta, int glbphi) const;
 
-      void addToPipe(const T& obj, unsigned int index);
+      void addToPipe(const T& obj, unsigned int index, unsigned int dupNum);
       void setPipe(const std::vector<T>& objvec, unsigned int index);
       void setPipes(const std::vector<std::vector<T>>& objvecvec);
 
