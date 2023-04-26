@@ -106,11 +106,13 @@ void l1ct::tdr_regionizer::Regionizer<T>::initRegions(const std::vector<PFInputR
   regions_.resize(regions.size());
   for (unsigned int i = 0; i < regions.size(); ++i) {
     regions_[i] = regions[i].region;
-    // dbgCout() << "region eta/phi: " << regions_[i].intEtaCenter() << " " << regions_[i].intPhiCenter()
-    //                 << ", eta half width = " << regions_[i].hwEtaHalfWidth.to_int()
-    //                 << ", phi half width = " << regions_[i].hwPhiHalfWidth.to_int()
-    //                 << ", eta extra = " << regions_[i].hwEtaExtra.to_int()
-    //                 << ", phi extra = " << regions_[i].hwPhiExtra.to_int() << std::endl;
+    if (debug_) {
+      dbgCout() << "region eta/phi: " << regions_[i].intEtaCenter() << " " << regions_[i].intPhiCenter()
+                      << ", eta half width = " << regions_[i].hwEtaHalfWidth.to_int()
+                      << ", phi half width = " << regions_[i].hwPhiHalfWidth.to_int()
+                      << ", eta extra = " << regions_[i].hwEtaExtra.to_int()
+                      << ", phi extra = " << regions_[i].hwPhiExtra.to_int() << std::endl;
+    }
     if (isInBigRegion(regions_[i])) {
       regionmap_.push_back(i);
     }
@@ -142,7 +144,9 @@ std::vector<size_t> l1ct::tdr_regionizer::Regionizer<T>::getSmallRegions(int glb
     int regphi = phi_wrap(glbphi - regions_[regionidx].intPhiCenter());
     int regeta = glbeta - regions_[regionidx].intEtaCenter();
 
-    if (regions_[regionidx].isInside(regeta, regphi)) {
+    // add a special check to not have 3 eta regions
+    if (regions_[regionidx].isInside(regeta, regphi) &&
+        !(glbeta == 57 && regeta == -115 || glbeta == -57 && regeta == 115)) {
       srIndices.push_back(i);
     }
   }
