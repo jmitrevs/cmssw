@@ -28,7 +28,7 @@ inline void l1ct::tdr_regionizer::Pipe<l1ct::TkObjEmu>::addObj(l1ct::TkObjEmu ob
 }
 
 template <typename T>
-size_t l1ct::tdr_regionizer::Pipe<T>::getPipeIndexForObject(unsigned int index) {
+int l1ct::tdr_regionizer::Pipe<T>::getPipeIndexForObject(unsigned int index) {
   return getObj(index).getNextSRIndex();
 }
 
@@ -165,10 +165,7 @@ void l1ct::tdr_regionizer::Regionizer<T>::addToPipe(const T& obj, unsigned int p
   auto glbphi = sectors_[sector].hwGlbPhiOf(obj).to_int();
   auto glbeta = sectors_[sector].hwGlbEtaOf(obj).to_int();
   // get the SR indices that this object should go into
-  std::vector<size_t> srIndices = getSmallRegions(glbeta, glbphi);
-  if (!srIndices.empty()) {
-    pipes_[pipe].addObj(obj, srIndices, glbeta, glbphi, dupNum, ndup_);
-  }
+  pipes_[pipe].addObj(obj, getSmallRegions(glbeta, glbphi), glbeta, glbphi, dupNum, ndup_);
 }
 
 template <typename T>
@@ -177,6 +174,9 @@ void l1ct::tdr_regionizer::Regionizer<T>::setPipe(const std::vector<T>& objvec, 
   pipes_[pipe].reset();
   unsigned int dupNum = pipe % ndup_;
   for (unsigned int i = dupNum; i < objvec.size(); i += ndup_) {
+    if (debug_) {
+      dbgCout() << "Pipe " << pipe << " dupNum " << dupNum << ": add obj, index " << i << " with pt = " << objvec[i].intPt() << std::endl;
+    }
     addToPipe(objvec[i], pipe, dupNum);
   }
 }
@@ -191,11 +191,14 @@ void l1ct::tdr_regionizer::Regionizer<T>::setPipes(const std::vector<std::vector
 
 // NEED TO CHECK CONSTANTS HERE
 template <typename T>
-int l1ct::tdr_regionizer::Regionizer<T>::getPipeTime(int linkIndex,
+int l1ct::tdr_regionizer::Regionizer<T>::getPipeTime(int pipeIndex,
                                                      int linkTimeOfObject,
                                                      int linkAlgoClockRunningTime) {
+  if (debug_) {
+    dbgCout() << "call getPipeTim with " << pipeIndex << ", " << linkTimeOfObject << ", " << linkAlgoClockRunningTime << std::endl;
+  }
   const int LINK_TO_ALGO_CLK_OFFSET = 2;  //13; // in units of algo clock
-  int linkObjectArrival = (getSize() - 1 - linkIndex) + LINK_TO_ALGO_CLK_OFFSET + linkTimeOfObject;
+  int linkObjectArrival = (getSize() - 1 - pipeIndex) + LINK_TO_ALGO_CLK_OFFSET + linkTimeOfObject;
 
   return (linkAlgoClockRunningTime < 0 || linkObjectArrival > linkAlgoClockRunningTime + 4)
              ? linkObjectArrival
@@ -203,18 +206,18 @@ int l1ct::tdr_regionizer::Regionizer<T>::getPipeTime(int linkIndex,
 }
 
 template <typename T>
-int l1ct::tdr_regionizer::Regionizer<T>::popLinkObject(int linkIndex, int currentTimeOfObject) {
-  auto& obj = pipes_[linkIndex].getObj();
-  obj.incCount();
-  if (obj.getCount() < obj.getSRIndices().size()) {
+int l1ct::tdr_regionizer::Regionizer<T>::popPipeObject(int pipeIndex, int currentTimeOfObject) {
+  auto& obj = pipes_[pipeIndex].getObj();
+  obj.incSR();
+  if (obj.getNextSRIndex() >= 0) {
     // Continue working on the same object, since it goes in multiple SRs due to overlaps
     return currentTimeOfObject + 1;
   } else {
     // move on to next item in pipe
-    pipes_[linkIndex].erase();
+    pipes_[pipeIndex].erase();
     //get time of next object
-    if (getPipeSize(linkIndex)) {
-      return getPipeTime(linkIndex, pipes_[linkIndex].getClock(), currentTimeOfObject);
+    if (getPipeSize(pipeIndex)) {
+      return getPipeTime(pipeIndex, pipes_[pipeIndex].getClock(), currentTimeOfObject);
     } else {  //no more objects on link
       return -1;
     }
@@ -223,6 +226,9 @@ int l1ct::tdr_regionizer::Regionizer<T>::popLinkObject(int linkIndex, int curren
 
 template <typename T>
 void l1ct::tdr_regionizer::Regionizer<T>::initTimes() {
+  if (debug_) {
+    printDebug(-1);
+  }
   for (unsigned int pipe = 0; pipe < getSize(); ++pipe) {
     if (getPipeSize(pipe)) {
       timeOfNextObject_.push_back(timeNextFromIndex(pipe, -1));
@@ -261,54 +267,59 @@ void l1ct::tdr_regionizer::Regionizer<T>::run() {
   while (loopCount < 972) {  //this is the max allowable if nothing ever blocks
     //init min time, pipe, and link index
     //      to find the target pipe currently with action
-    int minPipeIndex = -1;
-    int minLinkIndex = -1;
+    int minHardPipeIndex = -1;
+    int minLogPipeIndex = -1;
     int minTime = 0;
 
-    //do pipe-full handling
-    for (unsigned int pipe = 0; pipe < getSize(); ++pipe) {
-      if (timeOfNextObject_[pipe] >= 0 && smallRegionObjects_[getPipeIndexForObject(pipe)].size() == maxobjects_) {
-        //pipe is full so proceed to next object
-        if (debug_) {
-          dbgCout() << "pipe full for pipe " << pipe << " and pipe index " << getPipeIndexForObject(pipe) << std::endl;
-        }
 
-        //'remove' the selected object from its link
-        timeOfNextObject_[pipe] = popLinkObject(pipe, timeOfNextObject_[pipe]);
+
+    //do pipe-full and throwout handling
+    for (unsigned int pipe = 0; pipe < getSize(); ++pipe) {
+
+      while (timeOfNextObject_[pipe] >= 0 && (getPipeIndexForObject(pipe) < 0 || smallRegionObjects_[getPipeIndexForObject(pipe)].size() == maxobjects_)) {
+
+        //'remove' the selected object from its pipe
+        timeOfNextObject_[pipe] = popPipeObject(pipe, timeOfNextObject_[pipe]);
       }  //end pipe-full handling loop
     }
 
     //do find object handling
     for (unsigned int pipe = 0; pipe < getSize(); ++pipe) {
       // dbgCout() << "secotor = " << pipe << ", timeOfNextObject_[pipe] = " << timeOfNextObject_[pipe]
-      //   << ", minLinkIndex = " << minLinkIndex << ", minTime = " << minTime << ", minPipeIndex = " << minPipeIndex << std::endl;
-      if (timeOfNextObject_[pipe] >= 0 && (minLinkIndex == -1 || timeOfNextObject_[pipe] < minTime)) {
+      //   << ", minLogPipeIndex = " << minLogPipeIndex << ", minTime = " << minTime << ", minHardPipeIndex = " << minHardPipeIndex << std::endl;
+      if (timeOfNextObject_[pipe] >= 0 && (minLogPipeIndex == -1 || timeOfNextObject_[pipe] < minTime)) {
         //found new 'selected' link object and pipe
-        minPipeIndex = getHardwarePipeIndexForObject(pipe);
+        if (debug_) {
+          dbgCout() << "pipe = " << pipe << std::endl;
+        }
+        minHardPipeIndex = getHardwarePipeIndexForObject(pipe);
         minTime = timeOfNextObject_[pipe];
-        minLinkIndex = pipe;
-      } else if (getPipeSize(pipe) && minLinkIndex >= 0 &&
-                 minPipeIndex == static_cast<int>(getHardwarePipeIndexForObject(pipe)) &&
+        minLogPipeIndex = pipe;
+      } else if (getPipeSize(pipe) && minLogPipeIndex >= 0 &&
+                 minHardPipeIndex == static_cast<int>(getHardwarePipeIndexForObject(pipe)) &&
                  timeOfNextObject_[pipe] == minTime) {
         //have pipe conflict, so need to wait a clock
         ++timeOfNextObject_[pipe];
       }
     }
     if (debug_) {
-      dbgCout() << " After, minLinkIndex = " << minLinkIndex << ", minTime = " << minTime << ", minPipeIndex = " << minPipeIndex << std::endl;
+      dbgCout() << " After, minLogPipeIndex = " << minLogPipeIndex << ", minTime = " << minTime << ", minHardPipeIndex = " << minHardPipeIndex << std::endl;
     }
-    if (minLinkIndex < 0)
+    if (minLogPipeIndex < 0)
       break;  //exit case
 
     //'put' object in small region
-    addToSmallRegion(minLinkIndex);
+    addToSmallRegion(minLogPipeIndex);
 
-    //'remove' the selected object from its link
-    int nextTime = popLinkObject(minLinkIndex, timeOfNextObject_[minLinkIndex]);
+    //'remove' the selected object from its pipe
+    int nextTime = popPipeObject(minLogPipeIndex, timeOfNextObject_[minLogPipeIndex]);
     if (nextTime > nclocks_) {
       break;
     }
-    timeOfNextObject_[minLinkIndex] = nextTime;
+    if (debug_) {
+      dbgCout() << "nextTime " << nextTime << ", minLogPipeIndex = " << minLogPipeIndex << std::endl;
+    }
+    timeOfNextObject_[minLogPipeIndex] = nextTime;
     ++loopCount;
   }  //end main loop
 

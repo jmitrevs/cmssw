@@ -34,10 +34,8 @@ namespace l1ct {
 
       unsigned int getClock() const { return linkobjclk_; }
       void setClock(unsigned int clock) { linkobjclk_ = clock; }
-      const std::vector<size_t>& getSRIndices() const { return srIndices_; }
-      size_t getNextSRIndex() const { return srIndices_.at(objcount_); }
-      unsigned int getCount() const { return objcount_; }
-      void incCount() { objcount_++; }
+      int getNextSRIndex() const { return (objcount_ < srIndices_.size()) ? srIndices_[objcount_] : -1; }
+      void incSR() { objcount_++; }
       int getPt() const { return obj_.intPt(); }
       int getGlbPhi() const { return glbphi_; }
       int getGlbEta() const { return glbeta_; }
@@ -74,8 +72,8 @@ namespace l1ct {
       int getGlbEta(unsigned int index = 0) const { return getObj(index).getGlbEta(); }
 
       int getClosedIndexForObject(unsigned int index = 0);
-      /// This returns the hardware pipe index (since there are one per SR pair)
-      size_t getPipeIndexForObject(unsigned int index = 0);
+      /// This returns the logical pipe index (linearized SR), -1 for throwout
+      int getPipeIndexForObject(unsigned int index = 0);
 
       unsigned int getPipeSize() const { return data_.size(); }
 
@@ -111,7 +109,7 @@ namespace l1ct {
       bool isInBigRegion(const PFRegionEmu& reg) const;
 
       unsigned int getSize() const { return pipes_.size(); }
-      unsigned int getPipeSize(unsigned int linkIndex) const { return pipes_[linkIndex].getPipeSize(); }
+      unsigned int getPipeSize(unsigned int pipeIndex) const { return pipes_[pipeIndex].getPipeSize(); }
 
       std::vector<size_t> getSmallRegions(int glbeta, int glbphi) const;
 
@@ -119,13 +117,12 @@ namespace l1ct {
       void setPipe(const std::vector<T>& objvec, unsigned int index);
       void setPipes(const std::vector<std::vector<T>>& objvecvec);
 
-      // linkIndex == sector
-      int getPipeTime(int linkIndex, int linkTimeOfObject, int linkAlgoClockRunningTime);
+      int getPipeTime(int pipeIndex, int linkTimeOfObject, int linkAlgoClockRunningTime);
 
-      /// This either removes the next object on the link or inrements the count; It returns the next time
-      int popLinkObject(int linkIndex, int currentTimeOfObject);
-      int timeNextFromIndex(unsigned int linkIndex, int time) {
-        return getPipeTime(linkIndex, pipes_[linkIndex].getClock(), time);
+      /// This either removes the next object on the pipe or inrements the count; It returns the next time
+      int popPipeObject(int pipeIndex, int currentTimeOfObject);
+      int timeNextFromIndex(unsigned int pipeIndex, int time) {
+        return getPipeTime(pipeIndex, pipes_[pipeIndex].getClock(), time);
       }
 
       void initTimes();
@@ -134,13 +131,13 @@ namespace l1ct {
         return pipes_[linknum].getClosedIndexForObject(index);
       }
 
-      /// This retruns the linearized small region associated with the given item
-      size_t getPipeIndexForObject(unsigned int linknum, unsigned int index = 0) {
+      /// This retruns the linearized small region associated with the given item (-1 is throwout)
+      int getPipeIndexForObject(unsigned int linknum, unsigned int index = 0) {
         return pipes_[linknum].getPipeIndexForObject(index);
       }
 
-      /// This returns the hardware pipe number of the item. Generally two SRs share a pipe
-      size_t getHardwarePipeIndexForObject(unsigned int linknum, unsigned int index = 0) {
+      /// This returns the hardware pipe number of the item. Generally two SRs share a pipe (-1 is throwout)
+      int getHardwarePipeIndexForObject(unsigned int linknum, unsigned int index = 0) {
         return getHardwarePipeIndex(getPipeIndexForObject(linknum, index));
       }
 
