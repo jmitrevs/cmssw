@@ -49,8 +49,6 @@ namespace l1ct {
 
     /// The number of eta and phi small regions in a big region (board)
     uint32_t netaInBR_, nphiInBR_;
-    /// The total number of small regions in barrel (not just in board)
-    uint32_t nregions_;
 
     uint32_t MAX_TK_OBJ_;
     uint32_t MAX_EMCALO_OBJ_;

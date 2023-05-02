@@ -52,18 +52,17 @@ void l1ct::TDRRegionizerEmulator::initSectorsAndRegions(const RegionizerDecodedI
   }
   assert(!init_);
   init_ = true;
-  nregions_ = out.size();
 
   for (unsigned int i = 0; i < nBigRegions_; i++) {
     tkRegionizers_.emplace_back(
-        netaInBR_, nphiInBR_, nregions_, ntk_, bigRegionEdges_[i], bigRegionEdges_[i + 1], nclocks_);
+        netaInBR_, nphiInBR_, ntk_, bigRegionEdges_[i], bigRegionEdges_[i + 1], nclocks_);
     // duplicate input fibers to increase to increasee the throughput, since lots of data comes in per fiber
     hadCaloRegionizers_.emplace_back(
-        netaInBR_, nphiInBR_, nregions_, ncalo_, bigRegionEdges_[i], bigRegionEdges_[i + 1], nclocks_, 2);
+        netaInBR_, nphiInBR_, ncalo_, bigRegionEdges_[i], bigRegionEdges_[i + 1], nclocks_, 2, true);
     emCaloRegionizers_.emplace_back(
-        netaInBR_, nphiInBR_, nregions_, nem_, bigRegionEdges_[i], bigRegionEdges_[i + 1], nclocks_);
+        netaInBR_, nphiInBR_, nem_, bigRegionEdges_[i], bigRegionEdges_[i + 1], nclocks_);
     muRegionizers_.emplace_back(
-        netaInBR_, nphiInBR_, nregions_, nmu_, bigRegionEdges_[i], bigRegionEdges_[i + 1], nclocks_);
+        netaInBR_, nphiInBR_, nmu_, bigRegionEdges_[i], bigRegionEdges_[i + 1], nclocks_);
   }
 
   dbgCout() << "in.track.size() = " << in.track.size() << std::endl;
@@ -198,7 +197,6 @@ void l1ct::TDRRegionizerEmulator::run(const RegionizerDecodedInputs& in, std::ve
     //add objects from link
     tkRegionizers_[ie].reset();
     tkRegionizers_[ie].setPipes(tk_links_in);
-    tkRegionizers_[ie].initTimes();
     // if (debug_) {
     //   dbgCout() << "Big region: " << ie << " SECTORS/LINKS " << std::endl;
     //   dbgCout() << "\tsector\titem\tpt\teta\tphi" << std::endl;
@@ -216,7 +214,6 @@ void l1ct::TDRRegionizerEmulator::run(const RegionizerDecodedInputs& in, std::ve
 
     emCaloRegionizers_[ie].reset();
     emCaloRegionizers_[ie].setPipes(em_links_in);
-    emCaloRegionizers_[ie].initTimes();
     // if (debug_) {
     //   dbgCout() << "Big region: " << ie << " SECTORS/LINKS " << std::endl;
     //   dbgCout() << "\tsector\titem\tpt\teta\tphi" << std::endl;
@@ -234,24 +231,22 @@ void l1ct::TDRRegionizerEmulator::run(const RegionizerDecodedInputs& in, std::ve
 
     hadCaloRegionizers_[ie].reset();
     hadCaloRegionizers_[ie].setPipes(calo_links_in);
-    hadCaloRegionizers_[ie].initTimes();
-    // if (debug_) {
-    //   dbgCout() << "Big region: " << ie << " SECTORS/LINKS " << std::endl;
-    //   dbgCout() << "\tsector\titem\tpt\teta\tphi" << std::endl;
-    //   for (unsigned int sector = 0; sector < calo_links_in.size(); sector++) {
-    //     for (unsigned int j = 0; j < calo_links_in[sector].size(); j++) {
-    //       dbgCout() << "\t" << sector << "\t" << j << "\t " << calo_links_in[sector][j].intPt() << "\t"
-    //                 << calo_links_in[sector][j].intEta() << "\t" << calo_links_in[sector][j].intPhi()
-    //                 << std::endl;
-    //     }
-    //     dbgCout() << "-------------------------------" << std::endl;
-    //   }
-    // }
+    if (debug_) {
+      dbgCout() << "Big region: " << ie << " SECTORS/LINKS " << std::endl;
+      dbgCout() << "\tsector\titem\tpt\teta\tphi" << std::endl;
+      for (unsigned int sector = 0; sector < calo_links_in.size(); sector++) {
+        for (unsigned int j = 0; j < calo_links_in[sector].size(); j++) {
+          dbgCout() << "\t" << sector << "\t" << j << "\t " << calo_links_in[sector][j].intPt() << "\t"
+                    << calo_links_in[sector][j].intEta() << "\t" << calo_links_in[sector][j].intPhi()
+                    << std::endl;
+        }
+        dbgCout() << "-------------------------------" << std::endl;
+      }
+    }
     hadCaloRegionizers_[ie].run();
 
     muRegionizers_[ie].reset();
     muRegionizers_[ie].setPipes(mu_links_in);
-    muRegionizers_[ie].initTimes();
     muRegionizers_[ie].run();
   }
 

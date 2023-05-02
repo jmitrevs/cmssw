@@ -4,7 +4,7 @@
 #include "DataFormats/L1TParticleFlow/interface/layer1_emulator.h"
 
 #include <vector>
-#include <map>
+#include <deque>
 #include <cassert>
 #include <algorithm>
 
@@ -25,72 +25,144 @@ namespace l1ct {
       return local_phi;
     }
 
-    // These are done per-sector (= per-input link)
+    /// corresponds to level1_to_2_pipe_t in firmware
     template <typename T>
-    class PipeObject {
+    class PipeEntry {
     public:
-      PipeObject() {}
-      PipeObject(const T& obj, std::vector<size_t> srIndices, int glbeta, int glbphi, unsigned int clk);
+      PipeEntry() : obj_(), sr_(-1) {}
+      PipeEntry(const T& obj, int sr, int glbeta, int glbphi) : 
+        obj_(obj), sr_(sr), glbeta_(glbeta), glbphi_(glbphi) {}
 
-      unsigned int getClock() const { return linkobjclk_; }
+      int sr() const { return sr_; }
+
+      // Note, this returns a copy so you can modify
+      T obj() const { return obj_; }
+
+      bool valid() const { return sr >= 0; }
+
+      void setInvalid() {sr = -1;}
+
+      int pt() const { return obj_.intPt(); }
+      int glbPhi() const { return glbphi_; }
+      int glbEta() const { return glbeta_; }
+
+    private:
+      T obj_;
+      /// the SR linearized indices (can index regionmap_) where this object needs to go; -1 means invalid
+      int sr_;
+      /// The global eta and phi of the object (hard to get with duplicates)
+      int glbeta_, glbphi_;
+
+    };
+
+    /// The pipe, with multiple inputs and one output
+    template <typename T>
+    class Pipe {
+    public:
+      Pipe(size_t size) : pipe_(size) {}
+
+      /// check if the entry is valid (i.e. already has data)
+      bool valid(size_t idx) const {return pipe_.at(idx).valid(); }
+
+      /// should check if valid before adding an entry
+      void addEntry(size_t idx, const PipeEntry<T>& entry) {pipe_[idx] = entry; }
+
+      /// perform one tick, shifting all the entries to higher indices, and returning the last
+      PipeEntry<T> popEntry();
+
+    private:
+      std::vector<PipeEntry<T>> pipe_;
+    }
+
+    /// the components that make up the L1 regionizer buffer
+    template <typename T>
+    class BufferEntry {
+    public:
+      BufferEntry() {}
+      BufferEntry(const T& obj, std::vector<size_t> srIndices, int glbeta, int glbphi, unsigned int clk);
+
+      unsigned int clock() const { return linkobjclk_; }
       void setClock(unsigned int clock) { linkobjclk_ = clock; }
-      int getNextSRIndex() const { return (objcount_ < srIndices_.size()) ? srIndices_[objcount_] : -1; }
+      int nextSR() const { return (objcount_ < srIndices_.size()) ? srIndices_[objcount_] : -1; }
       void incSR() { objcount_++; }
-      int getPt() const { return obj_.intPt(); }
-      int getGlbPhi() const { return glbphi_; }
-      int getGlbEta() const { return glbeta_; }
+      int pt() const { return obj_.intPt(); }
+      int glbPhi() const { return glbphi_; }
+      int glbEta() const { return glbeta_; }
 
-      T& getRawObj() { return obj_; }
-      const T& getRawObj() const { return obj_; }
+      //T obj() { return obj_; }
+      const T& obj() const { return obj_; }
 
     private:
       T obj_;
       /// the SR linearized indices (can index regionmap_) where this object needs to go
       std::vector<size_t> srIndices_;
-      /// The global eta and phi of the object (somewhat redundant with obj_)
+      /// The global eta and phi of the object (hard to get with duplicates)
       int glbeta_, glbphi_;
       unsigned int linkobjclk_, objcount_;
     };
 
+    /// The L1 regionizer buffer (corresponding to level1_fifo_buffer.vhd)
     template <typename T>
-    class Pipe {
+    class Buffer {
     public:
-      Pipe(unsigned int nphi = 9) : clkindex_(0), nphi_(nphi) {}
+      Buffer() : clkindex_(0), timeOfNextObject_(0) {}
 
-      void addObj(T obj, std::vector<size_t> srs, int glbeta, int glbphi, unsigned int dupNum, unsigned int ndup);
+      void addEntry(const T& obj, std::vector<size_t> srs, int glbeta,
+                    int glbphi, unsigned int dupNum, unsigned int ndup);
 
-      PipeObject<T>& getObj(unsigned int index = 0) { return data_[index]; }
-      const PipeObject<T>& getObj(unsigned int index = 0) const { return data_[index]; }
+      BufferEntry<T>& front() { return data_.front(); }
+      const BufferEntry<T>& front() const { return data_.front(); }
 
-      unsigned int getClock(unsigned int index = 0) const { return getObj(index).getClock(); }
-      void setClock(unsigned int clock, unsigned int index = 0) { return getObj(index).setClock(clock); }
-      unsigned int getCount(unsigned int index = 0) const { return getObj(index).getCount(); }
-      void incCount(unsigned int index = 0) { getObj(index).incCount(); }
-      void erase(unsigned int index = 0) { data_.erase(data_.begin() + index); }
-      int getPt(unsigned int index = 0) const { return getObj(index).getPt(); }
-      int getGlbPhi(unsigned int index = 0) const { return getObj(index).getGlbPhi(); }
-      int getGlbEta(unsigned int index = 0) const { return getObj(index).getGlbEta(); }
+      /// sets the next time something is taken from this buffer
+      void updateNextObjectTime(int currentTime);
 
-      int getClosedIndexForObject(unsigned int index = 0);
-      /// This returns the logical pipe index (linearized SR), -1 for throwout
-      int getPipeIndexForObject(unsigned int index = 0);
+      unsigned int clock(unsigned int index = 0) const { return entry(index).clock(); }
+      void setClock(unsigned int clock, unsigned int index = 0) { return entry(index).setClock(clock); }
+      unsigned int getCount(unsigned int index = 0) const { return entry(index).getCount(); }
+      void incCount(unsigned int index = 0) { entry(index).incCount(); }
 
-      unsigned int getPipeSize() const { return data_.size(); }
+      /// delete the front element
+      void pop() { data_.pop_front(); }
+
+      // mostly for debug
+      int pt(unsigned int index = 0) const { return data_[index].pt(); }
+      int glbPhi(unsigned int index = 0) const { return data_[index].glbPhi(); }
+      int glbEta(unsigned int index = 0) const { return data_[index].glbEta(); }
+
+      //int closedIndex(unsigned int index = 0);
+
+      /// This returns the logical buffer index (linearized SR), -1 for throwout
+      //int nextSR() const {return front().nextSR(); }
+
+      unsigned int numEntries() const { return data_.size(); }
+
+      /// pop the first entry, formatted for inclusion in pipe
+      pipeEntry<T> popEntry(int currTime);
+
+      int timeOfNextObject() const { return timeOfNextObject_; }
 
       void reset() {
         clkindex_ = 0;
         data_.clear();
+        timeOfNextObject_ = -1;
       }
 
     private:
-      unsigned int clkindex_, nphi_;
-      std::vector<PipeObject<T>> data_;
+      // transient--used only during event construction, not used after
+      unsigned int clkindex_;
+
+      /// The actual data
+      std::deque<BufferEntry<T>> data_;
+
+      /// the time of the next object in the buffer (-1 if none) 
+      int timeOfNextObject_;
+
     };
 
     template <typename T>
     class Regionizer {
     public:
-      Regionizer() {}
+      Regionizer() = delete;
       Regionizer(unsigned int neta,
                  unsigned int nphi,      //the number of eta and phi SRs in a big region (board)
                  unsigned int nregions,  // The total number of small regions in the full barrel
@@ -108,41 +180,31 @@ namespace l1ct {
       // is the given small region in the big region
       bool isInBigRegion(const PFRegionEmu& reg) const;
 
-      unsigned int getSize() const { return pipes_.size(); }
-      unsigned int getPipeSize(unsigned int pipeIndex) const { return pipes_[pipeIndex].getPipeSize(); }
+      unsigned int numBuffers() const { return buffers_.size(); }
+      unsigned int numEntries(unsigned int bufferIndex) const { return buffers_[bufferIndex].numEntries(); }
 
       std::vector<size_t> getSmallRegions(int glbeta, int glbphi) const;
 
-      void addToPipe(const T& obj, unsigned int index, unsigned int dupNum);
-      void setPipe(const std::vector<T>& objvec, unsigned int index);
-      void setPipes(const std::vector<std::vector<T>>& objvecvec);
+      void addToBuffer(const T& obj, unsigned int index, unsigned int dupNum);
+      void setBuffer(const std::vector<T>& objvec, unsigned int index);
+      void setBuffers(const std::vector<std::vector<T>>& objvecvec);
 
-      int getPipeTime(int pipeIndex, int linkTimeOfObject, int linkAlgoClockRunningTime);
+      //int bufferTime(int bufferIndex, int linkTimeOfObject, int linkAlgoClockRunningTime);
 
-      /// This either removes the next object on the pipe or inrements the count; It returns the next time
-      int popPipeObject(int pipeIndex, int currentTimeOfObject);
-      int timeNextFromIndex(unsigned int pipeIndex, int time) {
-        return getPipeTime(pipeIndex, pipes_[pipeIndex].getClock(), time);
-      }
+      /// This either removes the next object on the buffer or inrements the count; It returns the next time
+      int popBufferEntry(int bufferIndex, int currentTimeOfObject);
 
-      void initTimes();
-
-      int getClosedIndexForObject(unsigned int linknum, unsigned int index = 0) {
-        return pipes_[linknum].getClosedIndexForObject(index);
-      }
+      // int closedIndex(unsigned int linknum, unsigned int index = 0) {
+      //   return buffers_[linknum].closedIndex(index);
+      // }
 
       /// This retruns the linearized small region associated with the given item (-1 is throwout)
-      int getPipeIndexForObject(unsigned int linknum, unsigned int index = 0) {
-        return pipes_[linknum].getPipeIndexForObject(index);
-      }
-
-      /// This returns the hardware pipe number of the item. Generally two SRs share a pipe (-1 is throwout)
-      int getHardwarePipeIndexForObject(unsigned int linknum, unsigned int index = 0) {
-        return getHardwarePipeIndex(getPipeIndexForObject(linknum, index));
+      int nextSR(unsigned int linknum, unsigned int index = 0) {
+        return buffers_[linknum].nextSR(index);
       }
 
       /// 'put' object in small region
-      void addToSmallRegion(unsigned int linkNum, unsigned int index = 0);
+      void addToSmallRegion(PipeEntry<T>&&);
 
       void run();
 
@@ -159,7 +221,7 @@ namespace l1ct {
 
       /// Because some SRs share pipes, this determines the pipe index for a linearize SR index
       /// (This is based on the VHDL function, get_target_pipe_index_subindex)
-      size_t getHardwarePipeIndex(size_t srIndex) const { return srIndex / SRS_PER_RAM; }
+      size_t pipeIndex(size_t srIndex) const { return srIndex / SRS_PER_RAM; }
 
       // this function is for sorting small regions first in phi and then in eta.
       // It takes regions_ indices
@@ -167,8 +229,6 @@ namespace l1ct {
 
       /// The numbers of eta and phi in a big region (board)
       unsigned int neta_, nphi_;
-      /// The total number of small regions in the barrel (not just in the board)
-      unsigned int nregions_;
       /// The maximum number of objects to output per small region
       unsigned int maxobjects_;
       /// The number of input sectors for this type of device
@@ -179,10 +239,8 @@ namespace l1ct {
       int bigRegionMax_;
       /// the number of clocks to receive one event
       int nclocks_;
-      /// How many pipes per link (default 1)
+      /// How many buffers per link (default 1)
       int ndup_;
-
-      bool debug_;
 
       /// the region information assopciated with each input sector
       std::vector<l1ct::PFRegionEmu> sectors_;
@@ -193,14 +251,19 @@ namespace l1ct {
       /// indices of regions that are in the big region (board)
       std::vector<size_t> regionmap_;
 
-      /// The pipes. There are ndup_ pipes per link/sector
-      std::vector<Pipe<T>> pipes_;
+      /// The buffers. There are ndup_ buffers per link/sector
+      std::vector<Buffer<T>> buffers_;
 
-      /// One entry per pipe. If the pipe is empty, this is always -1
-      std::vector<int> timeOfNextObject_;
+      // /// One entry per buffer. If the buffer is empty, this is always -1
+      // std::vector<int> timeOfNextObject_;
+
+      /// The pipes.
+      Pipe<T> pipes_;
 
       /// The objects in each small region handled in board; Indexing corresponds to that in regionmap_
       std::vector<std::vector<T>> smallRegionObjects_;
+
+      bool debug_;
     };
 
   }  // namespace  tdr_regionizer
