@@ -4,6 +4,7 @@
 #include "DataFormats/L1TParticleFlow/interface/layer1_emulator.h"
 
 #include <vector>
+#include <map>
 #include <deque>
 #include <cassert>
 #include <algorithm>
@@ -30,7 +31,7 @@ namespace l1ct {
     class PipeEntry {
     public:
       PipeEntry() : obj_(), sr_(-1) {}
-      PipeEntry(const T& obj, int sr, int glbeta, int glbphi) : 
+      PipeEntry(const T& obj, int sr, int glbeta, int glbphi) :
         obj_(obj), sr_(sr), glbeta_(glbeta), glbphi_(glbphi) {}
 
       int sr() const { return sr_; }
@@ -38,9 +39,9 @@ namespace l1ct {
       // Note, this returns a copy so you can modify
       T obj() const { return obj_; }
 
-      bool valid() const { return sr >= 0; }
+      bool valid() const { return sr_ >= 0; }
 
-      void setInvalid() {sr = -1;}
+      void setInvalid() {sr_ = -1;}
 
       int pt() const { return obj_.intPt(); }
       int glbPhi() const { return glbphi_; }
@@ -70,9 +71,11 @@ namespace l1ct {
       /// perform one tick, shifting all the entries to higher indices, and returning the last
       PipeEntry<T> popEntry();
 
+      void reset();
+
     private:
       std::vector<PipeEntry<T>> pipe_;
-    }
+    };
 
     /// the components that make up the L1 regionizer buffer
     template <typename T>
@@ -82,7 +85,6 @@ namespace l1ct {
       BufferEntry(const T& obj, std::vector<size_t> srIndices, int glbeta, int glbphi, unsigned int clk);
 
       unsigned int clock() const { return linkobjclk_; }
-      void setClock(unsigned int clock) { linkobjclk_ = clock; }
       int nextSR() const { return (objcount_ < srIndices_.size()) ? srIndices_[objcount_] : -1; }
       void incSR() { objcount_++; }
       int pt() const { return obj_.intPt(); }
@@ -116,15 +118,12 @@ namespace l1ct {
       /// sets the next time something is taken from this buffer
       void updateNextObjectTime(int currentTime);
 
-      unsigned int clock(unsigned int index = 0) const { return entry(index).clock(); }
-      void setClock(unsigned int clock, unsigned int index = 0) { return entry(index).setClock(clock); }
-      unsigned int getCount(unsigned int index = 0) const { return entry(index).getCount(); }
-      void incCount(unsigned int index = 0) { entry(index).incCount(); }
 
       /// delete the front element
       void pop() { data_.pop_front(); }
 
       // mostly for debug
+      unsigned int clock(unsigned int index = 0) const { return data_[index].clock(); }
       int pt(unsigned int index = 0) const { return data_[index].pt(); }
       int glbPhi(unsigned int index = 0) const { return data_[index].glbPhi(); }
       int glbEta(unsigned int index = 0) const { return data_[index].glbEta(); }
@@ -137,7 +136,7 @@ namespace l1ct {
       unsigned int numEntries() const { return data_.size(); }
 
       /// pop the first entry, formatted for inclusion in pipe
-      pipeEntry<T> popEntry(int currTime);
+      PipeEntry<T> popEntry(int currTime);
 
       int timeOfNextObject() const { return timeOfNextObject_; }
 
@@ -154,7 +153,7 @@ namespace l1ct {
       /// The actual data
       std::deque<BufferEntry<T>> data_;
 
-      /// the time of the next object in the buffer (-1 if none) 
+      /// the time of the next object in the buffer (-1 if none)
       int timeOfNextObject_;
 
     };
@@ -165,7 +164,6 @@ namespace l1ct {
       Regionizer() = delete;
       Regionizer(unsigned int neta,
                  unsigned int nphi,      //the number of eta and phi SRs in a big region (board)
-                 unsigned int nregions,  // The total number of small regions in the full barrel
                  unsigned int maxobjects,
                  int bigRegionMin,
                  int bigRegionMax,  // the phi range covered by this board
@@ -189,14 +187,8 @@ namespace l1ct {
       void setBuffer(const std::vector<T>& objvec, unsigned int index);
       void setBuffers(const std::vector<std::vector<T>>& objvecvec);
 
-      //int bufferTime(int bufferIndex, int linkTimeOfObject, int linkAlgoClockRunningTime);
-
       /// This either removes the next object on the buffer or inrements the count; It returns the next time
       int popBufferEntry(int bufferIndex, int currentTimeOfObject);
-
-      // int closedIndex(unsigned int linknum, unsigned int index = 0) {
-      //   return buffers_[linknum].closedIndex(index);
-      // }
 
       /// This retruns the linearized small region associated with the given item (-1 is throwout)
       int nextSR(unsigned int linknum, unsigned int index = 0) {
@@ -254,11 +246,8 @@ namespace l1ct {
       /// The buffers. There are ndup_ buffers per link/sector
       std::vector<Buffer<T>> buffers_;
 
-      // /// One entry per buffer. If the buffer is empty, this is always -1
-      // std::vector<int> timeOfNextObject_;
-
-      /// The pipes.
-      Pipe<T> pipes_;
+      /// The pipe.
+      Pipe<T> pipe_;
 
       /// The objects in each small region handled in board; Indexing corresponds to that in regionmap_
       std::vector<std::vector<T>> smallRegionObjects_;

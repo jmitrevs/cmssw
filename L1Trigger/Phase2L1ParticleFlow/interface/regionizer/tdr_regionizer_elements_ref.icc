@@ -1,17 +1,23 @@
 
 // PIPE ENTRY AND BUFFER
 template <typename T>
-PipeEntry<T> l1ct::tdr_regionizer::Pipe<T>::popEntry() {
+l1ct::tdr_regionizer::PipeEntry<T> l1ct::tdr_regionizer::Pipe<T>::popEntry() {
   assert(pipe_.size() > 0);
-  T last = pipe_.last();
+  auto last = pipe_.back();
   // shift one over
-  for (size_t i pipe_.size() - 1; i > 0; --i) {
-    pipe_[i] = pipe[i - 1];
+  for (size_t i = pipe_.size() - 1; i > 0; --i) {
+    pipe_[i] = pipe_[i - 1];
   }
-  pipe_[0].setInvalid()
+  pipe_[0].setInvalid();
   return last;
 }
 
+template <typename T>
+void l1ct::tdr_regionizer::Pipe<T>::reset() {
+  for (auto& pe : pipe_) {
+    pe.setInvalid();
+  }
+}
 // BUFFER ENTRY AND BUFFER
 template <typename T>
 l1ct::tdr_regionizer::BufferEntry<T>::BufferEntry(
@@ -49,22 +55,22 @@ inline void l1ct::tdr_regionizer::Buffer<l1ct::TkObjEmu>::addEntry(const l1ct::T
 template <typename T>
 void l1ct::tdr_regionizer::Buffer<T>::updateNextObjectTime(int currTime) {
   if (data_.size() > 0) {
-    timeOfNextObject_ = std::max(front().clock(), currTime+1)
+    timeOfNextObject_ = std::max(front().clock(), static_cast<unsigned int>(currTime+1));
   } else {
     timeOfNextObject_ = -1;
   }
 }
 
 template <typename T>
-PipeEntry<T> l1ct::tdr_regionizer::Buffer<T>::popEntry(int currTime) {
+l1ct::tdr_regionizer::PipeEntry<T> l1ct::tdr_regionizer::Buffer<T>::popEntry(int currTime) {
   if (front().nextSR() < 0) {
     // throwout
     pop();
     updateNextObjectTime(currTime);
-    return PipeEntry<T>();
+    return l1ct::tdr_regionizer::PipeEntry<T>();
   }
 
-  auto pipeEntry = PipeEntry<T>(front().obj(), front().nextSR(), front().glbEta(), front().glbPhi());
+  auto pipeEntry = l1ct::tdr_regionizer::PipeEntry<T>(front().obj(), front().nextSR(), front().glbEta(), front().glbPhi());
   front().incSR();
   if (front().nextSR() < 0) {
     // no more SRs for current front
@@ -92,7 +98,7 @@ l1ct::tdr_regionizer::Regionizer<T>::Regionizer(unsigned int neta,
       bigRegionMax_(bigRegionMax),
       nclocks_(nclocks),
       ndup_(ndup),
-      pipes_(neta * nphi / SRS_PER_RAM),
+      pipe_(neta * nphi / SRS_PER_RAM),
       smallRegionObjects_(neta * nphi),
       debug_(debug) {}
 
@@ -230,31 +236,14 @@ void l1ct::tdr_regionizer::Regionizer<T>::setBuffers(const std::vector<std::vect
   }
 }
 
-// // NEED TO CHECK CONSTANTS HERE
-// template <typename T>
-// int l1ct::tdr_regionizer::Regionizer<T>::bufferTime(int bufferIndex,
-//                                                      int linkTimeOfObject,
-//                                                      int linkAlgoClockRunningTime) {
-//   if (debug_) {
-//     dbgCout() << "call getBufferTim with " << bufferIndex << ", " << linkTimeOfObject << ", " << linkAlgoClockRunningTime << std::endl;
-//   }
-//   const int LINK_TO_ALGO_CLK_OFFSET = 2;  //13; // in units of algo clock
-//   int linkObjectArrival = (numBuffers() - 1 - bufferIndex) + LINK_TO_ALGO_CLK_OFFSET + linkTimeOfObject;
-
-//   return (linkAlgoClockRunningTime < 0 || linkObjectArrival > linkAlgoClockRunningTime + 4)
-//              ? linkObjectArrival
-//              : (linkAlgoClockRunningTime + 4);
-// }
-
 
 template <typename T>
-void l1ct::tdr_regionizer::Regionizer<T>::addToSmallRegion(PipeEntry<T>&& pipeEntry) {
+void l1ct::tdr_regionizer::Regionizer<T>::addToSmallRegion(l1ct::tdr_regionizer::PipeEntry<T>&& pipeEntry) {
   if (pipeEntry.valid()) {
 
     auto rawObj = pipeEntry.obj();
 
     // in small region, the relative eta and phi are based on a different center, so need to update
-    auto realRegIdx = regionmap_[bufferObj.nextSR()];
     auto etaC = regions_[pipeEntry.sr()].intEtaCenter();
     auto phiC = regions_[pipeEntry.sr()].intPhiCenter();
 
@@ -286,15 +275,15 @@ void l1ct::tdr_regionizer::Regionizer<T>::run() {
         auto nextSR = buffer.front().nextSR();
         if (nextSR < 0 || smallRegionObjects_[nextSR].size() == maxobjects_) {
           // throwout or SR full, just get rid of object
-          buffer.popEntry(loopCount)
+          buffer.popEntry(loopCount);
         } else {
           auto pipeIdx = pipeIndex(nextSR);
-          if (pipes_.valid(pipeIndex)) {
+          if (pipe_.valid(pipeIdx)) {
             // The pipe already has an entry, so wait till space is available
             buffer.updateNextObjectTime(loopCount);
           } else {
             // put the value in the pipe
-            pipes_.addEntry(pipeIdx, buffer.popEntry(loopCount));
+            pipe_.addEntry(pipeIdx, buffer.popEntry(loopCount));
           }
         }
       }
@@ -334,12 +323,12 @@ void l1ct::tdr_regionizer::Regionizer<T>::run() {
     // timeOfNextObject_[minLogBufferIndex] = nextTime;
 
     // //'put' object in small region. Note, this also shifts all the pipes
-    addToSmallRegion(pipes_.popEntry());
+    addToSmallRegion(pipe_.popEntry());
+
+    if (debug_)
+      printDebug(loopCount);
 
   }  //end main loop
-
-  if (debug_)
-    printDebug(loopCount);
 }
 
 template <typename T>
@@ -347,7 +336,7 @@ void l1ct::tdr_regionizer::Regionizer<T>::reset() {
   for (auto& buffer : buffers_) {
     buffer.reset();
   }
-  timeOfNextObject_.clear();
+  pipe_.reset();
   for (auto& smallRegionObject : smallRegionObjects_) {
     smallRegionObject.clear();
   }
@@ -392,7 +381,7 @@ void l1ct::tdr_regionizer::Regionizer<T>::printDebug(int count) const {
     dbgCout() << "-------------------------------" << std::endl;
   }
   dbgCout() << "TIMES" << std::endl;
-  for (unsigned int i = 0; i < numBuffers.size(); i++) {
+  for (unsigned int i = 0; i < numBuffers(); i++) {
     dbgCout() << "  " << buffers_[i].timeOfNextObject();
   }
   dbgCout() << "\n-------------------------------" << std::endl;
