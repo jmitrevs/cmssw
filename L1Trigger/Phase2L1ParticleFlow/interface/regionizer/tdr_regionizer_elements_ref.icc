@@ -259,17 +259,17 @@ void l1ct::tdr_regionizer::Regionizer<T>::addToSmallRegion(l1ct::tdr_regionizer:
 
 template <typename T>
 void l1ct::tdr_regionizer::Regionizer<T>::run() {
-  if (debug_)
-    printDebug(0);
+  if (debug_) printDebug(0);
   for (int loopCount = 0; loopCount < 972; loopCount++) {  //this is the max allowable if nothing ever blocks
 
-    // bool processedEntry = false; // to exit early
+    // to exit early
+    bool processedAll = true; // to be overwritten if not the case
 
     // handle the fifo buffers
     for (auto& buffer : buffers_) {
-      // if (buffer.timeOfNextObject() > 0) {
-      //   processedEntry = true;
-      // }
+      if (buffer.timeOfNextObject() >= 0) {
+        processedAll = false;
+      }
       if (buffer.timeOfNextObject() == loopCount) {
         // time to handle the buffer entry
         auto nextSR = buffer.front().nextSR();
@@ -288,46 +288,20 @@ void l1ct::tdr_regionizer::Regionizer<T>::run() {
         }
       }
 
-      // // dbgCout() << "secotor = " << buffer << ", timeOfNextObject_[buffer] = " << timeOfNextObject_[buffer]
-      // //   << ", minLogBufferIndex = " << minLogBufferIndex << ", minTime = " << minTime << ", minHardBufferIndex = " << minHardBufferIndex << std::endl;
-      // if (timeOfNextObject_[buffer] >= 0 && (minLogBufferIndex == -1 || timeOfNextObject_[buffer] < minTime)) {
-      //   //found new 'selected' link object and buffer
-      //   if (debug_) {
-      //     dbgCout() << "buffer = " << buffer << std::endl;
-      //   }
-      //   minHardBufferIndex = pipeIndex(buffer);
-      //   minTime = timeOfNextObject_[buffer];
-      //   minLogBufferIndex = buffer;
-      // } else if (numEntries(buffer) && minLogBufferIndex >= 0 &&
-      //            minHardBufferIndex == static_cast<int>(pipeIndex(buffer)) &&
-      //            timeOfNextObject_[buffer] == minTime) {
-      //   //have buffer conflict, so need to wait a clock
-      //   ++timeOfNextObject_[buffer];
-      // }
     }
-    // if (debug_) {
-    //   dbgCout() << " After, minLogBufferIndex = " << minLogBufferIndex << ", minTime = " << minTime << ", minHardBufferIndex = " << minHardBufferIndex << std::endl;
-    // }
-    // // if (!processedEntry)
-    // //   break;  //exit case
-
-
-    // //'remove' the selected object from its buffer
-    // int nextTime = popBufferEntry(minLogBufferIndex, timeOfNextObject_[minLogBufferIndex]);
-    // if (nextTime > nclocks_) {
-    //   break;
-    // }
-    // if (debug_) {
-    //   dbgCout() << "nextTime " << nextTime << ", minLogBufferIndex = " << minLogBufferIndex << std::endl;
-    // }
-    // timeOfNextObject_[minLogBufferIndex] = nextTime;
-
-    // //'put' object in small region. Note, this also shifts all the pipes
     addToSmallRegion(pipe_.popEntry());
 
-    if (debug_)
-      printDebug(loopCount);
+    if (debug_) printDebug(loopCount);
 
+    // check ot see if you have processed all
+    if (processedAll) {
+      // first clear the pipe
+      for (int i = 0; i < pipe_.size(); i++) {
+        addToSmallRegion(pipe_.popEntry());
+      }
+      if (debug_) printDebug(1000);
+      break;
+    }
   }  //end main loop
 }
 

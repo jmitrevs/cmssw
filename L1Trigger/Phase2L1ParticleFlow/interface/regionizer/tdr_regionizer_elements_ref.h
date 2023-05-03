@@ -73,6 +73,8 @@ namespace l1ct {
 
       void reset();
 
+      size_t size() const {return pipe_.size(); }
+
     private:
       std::vector<PipeEntry<T>> pipe_;
     };
@@ -127,11 +129,6 @@ namespace l1ct {
       int pt(unsigned int index = 0) const { return data_[index].pt(); }
       int glbPhi(unsigned int index = 0) const { return data_[index].glbPhi(); }
       int glbEta(unsigned int index = 0) const { return data_[index].glbEta(); }
-
-      //int closedIndex(unsigned int index = 0);
-
-      /// This returns the logical buffer index (linearized SR), -1 for throwout
-      //int nextSR() const {return front().nextSR(); }
 
       unsigned int numEntries() const { return data_.size(); }
 
