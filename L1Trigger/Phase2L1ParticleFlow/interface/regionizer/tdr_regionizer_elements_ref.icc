@@ -33,7 +33,7 @@ void l1ct::tdr_regionizer::Buffer<T>::addEntry(const T& obj, std::vector<size_t>
   // dupNum is the duplicate number of this buffer (int range 0 to ndup_-1)
   data_.emplace_back(obj, srIndices, glbeta, glbphi, clkindex_ + dupNum);
   if (timeOfNextObject_ < 0) {
-    timeOfNextObject_ = clkindex_;
+    timeOfNextObject_ = clkindex_ + dupNum;
   }
   clkindex_ += ndup;
 }
@@ -46,9 +46,13 @@ inline void l1ct::tdr_regionizer::Buffer<l1ct::TkObjEmu>::addEntry(const l1ct::T
                                                                unsigned int dupNum,
                                                                unsigned int ndup) {
   assert(ndup == 1);  // don't currently support duplicates for tracks
-  data_.emplace_back(obj, srIndices, glbeta, glbphi, clkindex_++);
+  data_.emplace_back(obj, srIndices, glbeta, glbphi, clkindex_);
+  if (timeOfNextObject_ < 0) {
+    timeOfNextObject_ = clkindex_ + dupNum;
+  }
+  ++clkindex_;
   if (clkindex_ % 3 == 2)
-    clkindex_++;  //this is for tracker, could I get this generically maybe?
+    ++clkindex_;  //this is for tracker, could I get this generically maybe?
 }
 
 
@@ -105,11 +109,15 @@ l1ct::tdr_regionizer::Regionizer<T>::Regionizer(unsigned int neta,
 template <typename T>
 void l1ct::tdr_regionizer::Regionizer<T>::initSectors(const std::vector<DetectorSector<T>>& sectors) {
   assert(nsectors_ == 0);
-  nsectors_ = sectors.size();
-  sectors_.resize(nsectors_);
+  for (const auto& sector : sectors) {
+    if (isInBigRegionLoose(sector.region)) {
+      sectors_.push_back(sector.region);
+    }
+  }
+  nsectors_ = sectors_.size();
   buffers_.resize(nsectors_ * ndup_);
-  for (unsigned int i = 0; i < nsectors_; ++i) {
-    sectors_[i] = sectors[i].region;
+  if (debug_) {
+    dbgCout() << "Number of sectors: " << nsectors_ << std::endl;
   }
 }
 
@@ -117,8 +125,21 @@ template <typename T>
 void l1ct::tdr_regionizer::Regionizer<T>::initSectors(const DetectorSector<T>& sector) {
   assert(nsectors_ == 0);
   nsectors_ = 1;
-  sectors_.resize(1, sector.region);
+  sectors_.push_back(sector.region);
   buffers_.resize(nsectors_ * ndup_);
+  if (debug_) {
+    dbgCout() << "Number of sectors: " << nsectors_ << std::endl;
+  }
+}
+
+template <typename T>
+void l1ct::tdr_regionizer::Regionizer<T>::fillBuffers(const std::vector<DetectorSector<T>>& sectors) {
+  setBuffers(fillLinks(sectors));
+}
+
+template <typename T>
+void l1ct::tdr_regionizer::Regionizer<T>::fillBuffers(const DetectorSector<T>& sector) {
+  setBuffers(fillLinks(sector));
 }
 
 // this function is for sorting small regions first
@@ -187,6 +208,34 @@ bool l1ct::tdr_regionizer::Regionizer<T>::isInBigRegion(const PFRegionEmu& reg) 
 }
 
 template <typename T>
+bool l1ct::tdr_regionizer::Regionizer<T>::isInBigRegionLoose(const PFRegionEmu& reg) const {
+  auto phi = reg.intPhiCenter();
+  auto brmax = phi_wrap(bigRegionMax_ + reg.hwPhiHalfWidth.to_int() + reg.hwPhiExtra.to_int());
+  auto brmin = phi_wrap(bigRegionMin_ - reg.hwPhiHalfWidth.to_int() - reg.hwPhiExtra.to_int());
+  if (brmax < brmin) {
+    // the wraparound case
+    return phi > brmin || phi < brmax;
+  } else {
+    // the normal case
+    return phi > brmin && phi < brmax;
+  }
+}
+
+template <>
+bool l1ct::tdr_regionizer::Regionizer<l1ct::TkObjEmu>::isInBigRegionLoose(const PFRegionEmu& reg) const {
+  auto phi = reg.intPhiCenter();
+  auto brmax = phi_wrap(bigRegionMax_ + 2 * reg.hwPhiHalfWidth.to_int());
+  auto brmin = phi_wrap(bigRegionMin_ - 2 * reg.hwPhiHalfWidth.to_int());
+  if (brmax < brmin) {
+    // the wraparound case
+    return phi > brmin || phi < brmax;
+  } else {
+    // the normal case
+    return phi > brmin && phi < brmax;
+  }
+}
+
+template <typename T>
 std::vector<size_t> l1ct::tdr_regionizer::Regionizer<T>::getSmallRegions(int glbeta, int glbphi) const {
   std::vector<size_t> srIndices;  // the signal regions this object should go into
 
@@ -221,15 +270,15 @@ void l1ct::tdr_regionizer::Regionizer<T>::setBuffer(const std::vector<T>& objvec
   buffers_[buffer].reset();
   unsigned int dupNum = buffer % ndup_;
   for (unsigned int i = dupNum; i < objvec.size(); i += ndup_) {
-    if (debug_) {
-      dbgCout() << "Buffer " << buffer << " dupNum " << dupNum << ": add obj, index " << i << " with pt = " << objvec[i].intPt() << std::endl;
-    }
+    // if (debug_) {
+    //   dbgCout() << "Buffer " << buffer << " dupNum " << dupNum << ": add obj, index " << i << " with pt = " << objvec[i].intPt() << std::endl;
+    // }
     addToBuffer(objvec[i], buffer, dupNum);
   }
 }
 
 template <typename T>
-void l1ct::tdr_regionizer::Regionizer<T>::setBuffers(const std::vector<std::vector<T>>& objvecvec) {
+void l1ct::tdr_regionizer::Regionizer<T>::setBuffers(const std::vector<std::vector<T>>&& objvecvec) {
   assert(numBuffers() == objvecvec.size() * ndup_);
   for (unsigned int buffer = 0; buffer < numBuffers(); buffer++) {
     setBuffer(objvecvec[buffer/ndup_], buffer);
@@ -244,8 +293,9 @@ void l1ct::tdr_regionizer::Regionizer<T>::addToSmallRegion(l1ct::tdr_regionizer:
     auto rawObj = pipeEntry.obj();
 
     // in small region, the relative eta and phi are based on a different center, so need to update
-    auto etaC = regions_[pipeEntry.sr()].intEtaCenter();
-    auto phiC = regions_[pipeEntry.sr()].intPhiCenter();
+    auto realRegIdx = regionmap_[pipeEntry.sr()];
+    auto etaC = regions_[realRegIdx].intEtaCenter();
+    auto phiC = regions_[realRegIdx].intPhiCenter();
 
     int locEta = pipeEntry.glbEta() - etaC;
     int locPhi = phi_wrap(pipeEntry.glbPhi() - phiC);
@@ -360,3 +410,39 @@ void l1ct::tdr_regionizer::Regionizer<T>::printDebug(int count) const {
   }
   dbgCout() << "\n-------------------------------" << std::endl;
 }
+
+// returns 2D arrays, sectors (links) first dimension, objects second
+template <typename T>
+std::vector<std::vector<T>> l1ct::tdr_regionizer::Regionizer<T>::fillLinks(const std::vector<DetectorSector<T>>& sectors) const {
+  std::vector<std::vector<T>> links;
+
+  if (maxobjects_ == 0) {
+    return links;
+  }
+  //one link per sector
+  for (const auto& sector : sectors) {
+    if (isInBigRegionLoose(sector.region)) {
+      links.emplace_back();
+      for (unsigned int io = 0; io < sector.size() && io < nclocks_; io++) {
+        links.back().push_back(sector[io]);
+      }
+    }
+  }
+  return links;
+}
+
+template <typename T>
+std::vector<std::vector<T>> l1ct::tdr_regionizer::Regionizer<T>::fillLinks(const DetectorSector<T>& sector) const {
+  std::vector<std::vector<T>> links;
+
+  if (maxobjects_ == 0) {
+    return links;
+  }
+
+  links.emplace_back();
+  for (unsigned int io = 0; io < sector.size() && io < nclocks_; io++) {
+    links.back().push_back(sector[io]);
+  }
+  return links;
+}
+

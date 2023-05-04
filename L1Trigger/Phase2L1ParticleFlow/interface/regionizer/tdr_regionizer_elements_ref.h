@@ -109,7 +109,7 @@ namespace l1ct {
     template <typename T>
     class Buffer {
     public:
-      Buffer() : clkindex_(0), timeOfNextObject_(0) {}
+      Buffer() : clkindex_(0), timeOfNextObject_(-1) {}
 
       void addEntry(const T& obj, std::vector<size_t> srs, int glbeta,
                     int glbphi, unsigned int dupNum, unsigned int ndup);
@@ -168,12 +168,30 @@ namespace l1ct {
                  int ndup = 1,  // how much one duplicates the inputs (to increase processing bandwidth)
                  bool debug = false);
 
+
       void initSectors(const std::vector<DetectorSector<T>>& sectors);
       void initSectors(const DetectorSector<T>& sector);
       void initRegions(const std::vector<PFInputRegion>& regions);
 
-      // is the given small region in the big region
+      void fillBuffers(const std::vector<DetectorSector<T>>& sectors);
+      void fillBuffers(const DetectorSector<T>& sector);
+
+      void run();
+
+      void reset();
+
+      /// Return a map of of the SRs indexed by SR index (covering only those from board)
+      std::map<size_t, std::vector<T>> fillRegions(bool doSort);
+
+      void printDebug(int count) const;
+
+    private:
+
+      /// is the given small region in the big region
       bool isInBigRegion(const PFRegionEmu& reg) const;
+
+      /// Does the given region fit in the big region, taking into account overlaps?
+      bool isInBigRegionLoose(const PFRegionEmu& reg) const;
 
       unsigned int numBuffers() const { return buffers_.size(); }
       unsigned int numEntries(unsigned int bufferIndex) const { return buffers_[bufferIndex].numEntries(); }
@@ -182,7 +200,7 @@ namespace l1ct {
 
       void addToBuffer(const T& obj, unsigned int index, unsigned int dupNum);
       void setBuffer(const std::vector<T>& objvec, unsigned int index);
-      void setBuffers(const std::vector<std::vector<T>>& objvecvec);
+      void setBuffers(const std::vector<std::vector<T>>&& objvecvec);
 
       /// This either removes the next object on the buffer or inrements the count; It returns the next time
       int popBufferEntry(int bufferIndex, int currentTimeOfObject);
@@ -195,16 +213,10 @@ namespace l1ct {
       /// 'put' object in small region
       void addToSmallRegion(PipeEntry<T>&&);
 
-      void run();
+      /// returns 2D arrays, sectors (links) first dimension, objects second
+      std::vector<std::vector<T>> fillLinks(const std::vector<DetectorSector<T>>& sectors) const;
+      std::vector<std::vector<T>> fillLinks(const DetectorSector<T>& sector) const;
 
-      void reset();
-
-      /// Return a map of of the SRs indexed by SR index (covering only those from board)
-      std::map<size_t, std::vector<T>> fillRegions(bool doSort);
-
-      void printDebug(int count) const;
-
-    private:
       /// SRs share RAMs (and hardware pipes)
       static size_t constexpr SRS_PER_RAM = 2;
 

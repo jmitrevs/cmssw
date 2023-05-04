@@ -29,12 +29,7 @@ namespace l1ct {
     void run(const RegionizerDecodedInputs& in, std::vector<PFInputRegion>& out) override;
 
   private:
-    // link emulation from decoded inputs (for simulation)
-    void fillLinks(const RegionizerDecodedInputs& in, std::vector<std::vector<l1ct::TkObjEmu>>& links);
-    void fillLinks(const RegionizerDecodedInputs& in, std::vector<std::vector<l1ct::HadCaloObjEmu>>& links);
-    void fillLinks(const RegionizerDecodedInputs& in, std::vector<std::vector<l1ct::EmCaloObjEmu>>& links);
-    void fillLinks(const RegionizerDecodedInputs& in, std::vector<std::vector<l1ct::MuObjEmu>>& links);
-
+   
     /// The nubmer of barrel big regions (boards)
     uint32_t nBigRegions_;
     /// The maximum number of objects of each type to output per small region
