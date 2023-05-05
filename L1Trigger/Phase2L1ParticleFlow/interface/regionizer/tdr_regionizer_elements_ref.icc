@@ -424,12 +424,12 @@ void l1ct::tdr_regionizer::Regionizer<T>::run() {
 
     }
 
+    if (debug_) printDebug(loopCount);
+
     // add the small regions
     for (size_t i = 0; i < pipes_.size(); i++) {
       addToSmallRegion(pipes_.popEntry(i));
     }
-
-    if (debug_) printDebug(loopCount);
 
     // check ot see if you have processed all
     if (processedAll) {
