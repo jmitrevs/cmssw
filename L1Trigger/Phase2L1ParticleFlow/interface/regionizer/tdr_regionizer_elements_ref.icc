@@ -482,17 +482,20 @@ template <typename T>
 void l1ct::tdr_regionizer::Regionizer<T>::printDebug(int count) const {
   dbgCout() << "BUFFERS, (for " << numBuffers() << " buffers)" << std::endl;
   dbgCout() << count << "\tbuffer\tlogical\titem\tpt\teta\tphi\tclock" << std::endl;
-  for (auto buffer : invsectormap_) {
-    for (unsigned int j = 0; j < numEntries(buffer); j++) {
-      dbgCout() << "\t" << buffer
-                << "\t" << logicBuffIndex(buffer)
-                << "\t" << j
-                << "\t" << buffers_[buffer].pt(j)
-                << "\t" << buffers_[buffer].glbEta(j)
-                << "\t" << buffers_[buffer].glbPhi(j)
-                << "\t" << buffers_[buffer].clock(j) << std::endl;
+  for (auto sector : invsectormap_) {
+    for (unsigned int dup = 0; dup < ndup_; dup++) {
+      const unsigned int buffer = sector * ndup_ + dup;
+      for (unsigned int j = 0; j < numEntries(buffer); j++) {
+        dbgCout() << "\t" << buffer
+                  << "\t" << logicBuffIndex(buffer)
+                  << "\t" << j
+                  << "\t" << buffers_[buffer].pt(j)
+                  << "\t" << buffers_[buffer].glbEta(j)
+                  << "\t" << buffers_[buffer].glbPhi(j)
+                  << "\t" << buffers_[buffer].clock(j) << std::endl;
+      }
+      dbgCout() << "-------------------------------" << std::endl;
     }
-    dbgCout() << "-------------------------------" << std::endl;
   }
   dbgCout() << "PIPES, (for " << pipes_.size() << " pipes)" << std::endl;
   dbgCout() << count << "\tpipe\ttap\tsr\tpt\teta\tphi" << std::endl;
