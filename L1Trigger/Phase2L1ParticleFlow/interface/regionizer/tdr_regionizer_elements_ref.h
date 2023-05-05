@@ -80,6 +80,9 @@ namespace l1ct {
 
       size_t size() const {return pipe_.size(); }
 
+      /// for debug
+      const PipeEntry<T>& entry(size_t idx) const { return pipe_[idx]; }
+
     private:
       std::vector<PipeEntry<T>> pipe_;
     };
@@ -109,6 +112,9 @@ namespace l1ct {
       size_t size() const { return pipes_.size(); }
 
       size_t numTaps() const { return pipes_.at(0).size(); }
+
+      /// for debug
+      const PipeEntry<T>& entry(size_t pipe, size_t tap) const { return pipes_[pipe].entry(tap); }
 
     private:
 

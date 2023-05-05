@@ -386,7 +386,7 @@ void l1ct::tdr_regionizer::Regionizer<T>::addToSmallRegion(l1ct::tdr_regionizer:
 
 template <typename T>
 void l1ct::tdr_regionizer::Regionizer<T>::run() {
-  if (debug_) printDebug(0);
+  if (debug_) printDebug(-1);
   for (int loopCount = 0; loopCount < 972; loopCount++) {  //this is the max allowable if nothing ever blocks
 
     // to exit early
@@ -401,7 +401,13 @@ void l1ct::tdr_regionizer::Regionizer<T>::run() {
       if (buffer.timeOfNextObject() == loopCount) {
         // time to handle the buffer entry
         const auto nextSR = buffer.front().nextSR();
-        if (nextSR < 0 || smallRegionObjects_[nextSR].size() == maxobjects_) {
+        // if (debug_) {
+        //   dbgCout() << "handling bufIdx " << bufIdx << " object with SR = " << nextSR
+        //             << ", pt = " << buffer.pt()
+        //             << ", glbeta = " << buffer.glbEta()
+        //             << ", glbphi = " << buffer.glbPhi() << std::endl;
+        // }
+        if (nextSR < 0 || buffer.pt() == 0 || smallRegionObjects_[nextSR].size() == maxobjects_) {
           // throwout or SR full, just get rid of object
           buffer.popEntry(loopCount);
         } else {
@@ -488,6 +494,22 @@ void l1ct::tdr_regionizer::Regionizer<T>::printDebug(int count) const {
     }
     dbgCout() << "-------------------------------" << std::endl;
   }
+  dbgCout() << "PIPES, (for " << pipes_.size() << " pipes)" << std::endl;
+  dbgCout() << count << "\tpipe\ttap\tsr\tpt\teta\tphi" << std::endl;
+  for (size_t pipe = 0; pipe < pipes_.size(); pipe++) {
+    for (size_t tap = 0; tap < pipes_.numTaps(); tap++) {
+      auto entry = pipes_.entry(pipe, tap);
+      dbgCout() << "\t" << pipe
+                << "\t" << tap
+                << "\t" << entry.sr()
+                << "\t" << entry.pt()
+                << "\t" << entry.glbEta()
+                << "\t" << entry.glbPhi()
+                << std::endl;
+    }
+    dbgCout() << "-------------------------------" << std::endl;
+  }
+
   dbgCout() << "SMALL REGIONS" << std::endl;
   for (unsigned int region = 0; region < neta_ * nphi_; region++) {
     dbgCout() << count << "\tregion\t\titem\tpt\tloceta\tlocphi" << std::endl;
