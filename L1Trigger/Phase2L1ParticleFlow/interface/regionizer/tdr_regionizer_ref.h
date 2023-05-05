@@ -29,7 +29,6 @@ namespace l1ct {
     void run(const RegionizerDecodedInputs& in, std::vector<PFInputRegion>& out) override;
 
   private:
-   
     /// The nubmer of barrel big regions (boards)
     uint32_t nBigRegions_;
     /// The maximum number of objects of each type to output per small region

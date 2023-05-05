@@ -31,8 +31,7 @@ namespace l1ct {
     class PipeEntry {
     public:
       PipeEntry() : obj_(), sr_(-1) {}
-      PipeEntry(const T& obj, int sr, int glbeta, int glbphi) :
-        obj_(obj), sr_(sr), glbeta_(glbeta), glbphi_(glbphi) {}
+      PipeEntry(const T& obj, int sr, int glbeta, int glbphi) : obj_(obj), sr_(sr), glbeta_(glbeta), glbphi_(glbphi) {}
 
       int sr() const { return sr_; }
 
@@ -41,7 +40,7 @@ namespace l1ct {
 
       bool valid() const { return sr_ >= 0; }
 
-      void setInvalid() {sr_ = -1;}
+      void setInvalid() { sr_ = -1; }
 
       int pt() const { return obj_.intPt(); }
       int glbPhi() const { return glbphi_; }
@@ -53,7 +52,6 @@ namespace l1ct {
       int sr_;
       /// The global eta and phi of the object (hard to get with duplicates)
       int glbeta_, glbphi_;
-
     };
 
     /// The pipe, with multiple inputs and one output
@@ -65,20 +63,20 @@ namespace l1ct {
 
       Pipe(size_t ntaps) : pipe_(ntaps) {}
 
-      void setTaps(size_t taps) {pipe_.resize(taps); }
+      void setTaps(size_t taps) { pipe_.resize(taps); }
 
       /// check if the entry is valid (i.e. already has data)
-      bool valid(size_t idx) const {return pipe_.at(idx).valid(); }
+      bool valid(size_t idx) const { return pipe_.at(idx).valid(); }
 
       /// should check if valid before adding an entry
-      void addEntry(size_t idx, const PipeEntry<T>& entry) {pipe_[idx] = entry; }
+      void addEntry(size_t idx, const PipeEntry<T>& entry) { pipe_[idx] = entry; }
 
       /// perform one tick, shifting all the entries to higher indices, and returning the last
       PipeEntry<T> popEntry();
 
       void reset();
 
-      size_t size() const {return pipe_.size(); }
+      size_t size() const { return pipe_.size(); }
 
       /// for debug
       const PipeEntry<T>& entry(size_t idx) const { return pipe_[idx]; }
@@ -87,13 +85,12 @@ namespace l1ct {
       std::vector<PipeEntry<T>> pipe_;
     };
 
-        /// The pipe, with multiple inputs and one output
+    /// The pipe, with multiple inputs and one output
     template <typename T>
     class Pipes {
     public:
-
       /// the number of pipes
-      Pipes(size_t nregions) : pipes_(nregions/SRS_PER_RAM) {}
+      Pipes(size_t nregions) : pipes_(nregions / SRS_PER_RAM) {}
 
       /// set the number of taps in each pipe
       void setTaps(size_t taps);
@@ -102,7 +99,9 @@ namespace l1ct {
       bool valid(int sr, size_t logicBufIdx) const { return pipes_[pipeIndex(sr)].valid(logicBufIdx); }
 
       /// should check if valid before adding an entry
-      void addEntry(int sr, size_t logicBufIdx, const PipeEntry<T>& entry) { pipes_[pipeIndex(sr)].addEntry(logicBufIdx, entry); }
+      void addEntry(int sr, size_t logicBufIdx, const PipeEntry<T>& entry) {
+        pipes_[pipeIndex(sr)].addEntry(logicBufIdx, entry);
+      }
 
       /// perform one tick, shifting all the entries to higher indices, and returning the last
       PipeEntry<T> popEntry(size_t pipe) { return pipes_[pipe].popEntry(); };
@@ -117,7 +116,6 @@ namespace l1ct {
       const PipeEntry<T>& entry(size_t pipe, size_t tap) const { return pipes_[pipe].entry(tap); }
 
     private:
-
       /// SRs share RAMs (and hardware pipes)
       static size_t constexpr SRS_PER_RAM = 2;
 
@@ -126,9 +124,7 @@ namespace l1ct {
       size_t pipeIndex(int sr) const { return sr / SRS_PER_RAM; }
 
       std::vector<Pipe<T>> pipes_;
-
     };
-
 
     /// the components that make up the L1 regionizer buffer
     template <typename T>
@@ -162,15 +158,14 @@ namespace l1ct {
     public:
       Buffer() : clkindex_(0), timeOfNextObject_(-1) {}
 
-      void addEntry(const T& obj, std::vector<size_t> srs, int glbeta,
-                    int glbphi, unsigned int dupNum, unsigned int ndup);
+      void addEntry(
+          const T& obj, std::vector<size_t> srs, int glbeta, int glbphi, unsigned int dupNum, unsigned int ndup);
 
       BufferEntry<T>& front() { return data_.front(); }
       const BufferEntry<T>& front() const { return data_.front(); }
 
       /// sets the next time something is taken from this buffer
       void updateNextObjectTime(int currentTime);
-
 
       /// delete the front element
       void pop() { data_.pop_front(); }
@@ -203,7 +198,6 @@ namespace l1ct {
 
       /// the time of the next object in the buffer (-1 if none)
       int timeOfNextObject_;
-
     };
 
     template <typename T>
@@ -211,14 +205,13 @@ namespace l1ct {
     public:
       Regionizer() = delete;
       Regionizer(unsigned int neta,
-                 unsigned int nphi,      //the number of eta and phi SRs in a big region (board)
+                 unsigned int nphi,  //the number of eta and phi SRs in a big region (board)
                  unsigned int maxobjects,
                  int bigRegionMin,
                  int bigRegionMax,  // the phi range covered by this board
                  int nclocks,
                  int ndup = 1,  // how much one duplicates the inputs (to increase processing bandwidth)
                  bool debug = false);
-
 
       void initSectors(const std::vector<DetectorSector<T>>& sectors);
       void initSectors(const DetectorSector<T>& sector);
@@ -237,7 +230,6 @@ namespace l1ct {
       void printDebug(int count) const;
 
     private:
-
       /// is the given small region in the big region
       bool isInBigRegion(const PFRegionEmu& reg) const;
 
@@ -257,9 +249,7 @@ namespace l1ct {
       int popBufferEntry(int bufferIndex, int currentTimeOfObject);
 
       /// This retruns the linearized small region associated with the given item (-1 is throwout)
-      int nextSR(unsigned int linknum, unsigned int index = 0) {
-        return buffers_[linknum].nextSR(index);
-      }
+      int nextSR(unsigned int linknum, unsigned int index = 0) { return buffers_[linknum].nextSR(index); }
 
       /// 'put' object in small region
       void addToSmallRegion(PipeEntry<T>&&);
@@ -267,7 +257,6 @@ namespace l1ct {
       /// returns 2D arrays, sectors (links) first dimension, objects second
       std::vector<std::vector<T>> fillLinks(const std::vector<DetectorSector<T>>& sectors) const;
       std::vector<std::vector<T>> fillLinks(const DetectorSector<T>& sector) const;
-
 
       // this function is for sorting small regions first in phi and then in eta.
       // It takes regions_ indices
@@ -278,7 +267,7 @@ namespace l1ct {
       bool sortRegionsHelper(int etaa, int etab, int phia, int phib) const;
 
       /// get the index in regions_ for a particular SR.
-      size_t regionIndex(int sr) const {return regionmap_.at(sr); }
+      size_t regionIndex(int sr) const { return regionmap_.at(sr); }
 
       /// get the logical buffer index (i.e. the index in the order in the firmware)
       size_t logicBuffIndex(size_t bufIdx) const;
