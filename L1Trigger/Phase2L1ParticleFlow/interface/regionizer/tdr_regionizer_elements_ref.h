@@ -60,7 +60,12 @@ namespace l1ct {
     template <typename T>
     class Pipe {
     public:
-      Pipe(size_t size) : pipe_(size) {}
+      /// if using the default constructor, have to call setTaps before use
+      Pipe() : pipe_() {}
+
+      Pipe(size_t ntaps) : pipe_(ntaps) {}
+
+      void setTaps(size_t taps) {pipe_.resize(taps); }
 
       /// check if the entry is valid (i.e. already has data)
       bool valid(size_t idx) const {return pipe_.at(idx).valid(); }
@@ -78,6 +83,46 @@ namespace l1ct {
     private:
       std::vector<PipeEntry<T>> pipe_;
     };
+
+        /// The pipe, with multiple inputs and one output
+    template <typename T>
+    class Pipes {
+    public:
+
+      /// the number of pipes
+      Pipes(size_t nregions) : pipes_(nregions/SRS_PER_RAM) {}
+
+      /// set the number of taps in each pipe
+      void setTaps(size_t taps);
+
+      /// check if the entry is valid (i.e. already has data)
+      bool valid(int sr, size_t logicBufIdx) const { return pipes_[pipeIndex(sr)].valid(logicBufIdx); }
+
+      /// should check if valid before adding an entry
+      void addEntry(int sr, size_t logicBufIdx, const PipeEntry<T>& entry) { pipes_[pipeIndex(sr)].addEntry(logicBufIdx, entry); }
+
+      /// perform one tick, shifting all the entries to higher indices, and returning the last
+      PipeEntry<T> popEntry(size_t pipe) { return pipes_[pipe].popEntry(); };
+
+      void reset();
+
+      size_t size() const { return pipes_.size(); }
+
+      size_t numTaps() const { return pipes_.at(0).size(); }
+
+    private:
+
+      /// SRs share RAMs (and hardware pipes)
+      static size_t constexpr SRS_PER_RAM = 2;
+
+      /// Because some SRs share pipes, this determines the pipe index for a linearize SR index
+      /// (This is based on the VHDL function, get_target_pipe_index_subindex)
+      size_t pipeIndex(int sr) const { return sr / SRS_PER_RAM; }
+
+      std::vector<Pipe<T>> pipes_;
+
+    };
+
 
     /// the components that make up the L1 regionizer buffer
     template <typename T>
@@ -217,16 +262,20 @@ namespace l1ct {
       std::vector<std::vector<T>> fillLinks(const std::vector<DetectorSector<T>>& sectors) const;
       std::vector<std::vector<T>> fillLinks(const DetectorSector<T>& sector) const;
 
-      /// SRs share RAMs (and hardware pipes)
-      static size_t constexpr SRS_PER_RAM = 2;
-
-      /// Because some SRs share pipes, this determines the pipe index for a linearize SR index
-      /// (This is based on the VHDL function, get_target_pipe_index_subindex)
-      size_t pipeIndex(size_t srIndex) const { return srIndex / SRS_PER_RAM; }
 
       // this function is for sorting small regions first in phi and then in eta.
       // It takes regions_ indices
       bool sortRegionsRegular(size_t a, size_t b) const;
+
+      bool sortSectors(size_t a, size_t b) const;
+
+      bool sortRegionsHelper(int etaa, int etab, int phia, int phib) const;
+
+      /// get the index in regions_ for a particular SR.
+      size_t regionIndex(int sr) const {return regionmap_.at(sr); }
+
+      /// get the logical buffer index (i.e. the index in the order in the firmware)
+      size_t logicBuffIndex(size_t bufIdx) const;
 
       /// The numbers of eta and phi in a big region (board)
       unsigned int neta_, nphi_;
@@ -252,11 +301,17 @@ namespace l1ct {
       /// indices of regions that are in the big region (board)
       std::vector<size_t> regionmap_;
 
+      /// indices maps the sectors from the way they appear in the software to the order they are done in the regionizer
+      std::vector<size_t> sectormap_;
+
+      /// the inverse mapping of sectormap_ (only used for debug printing)
+      std::vector<size_t> invsectormap_;
+
       /// The buffers. There are ndup_ buffers per link/sector
       std::vector<Buffer<T>> buffers_;
 
-      /// The pipe.
-      Pipe<T> pipe_;
+      /// The pipes, one per ram (see SRS_PER_RAM)
+      Pipes<T> pipes_;
 
       /// The objects in each small region handled in board; Indexing corresponds to that in regionmap_
       std::vector<std::vector<T>> smallRegionObjects_;

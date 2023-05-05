@@ -18,6 +18,21 @@ void l1ct::tdr_regionizer::Pipe<T>::reset() {
     pe.setInvalid();
   }
 }
+
+template <typename T>
+void l1ct::tdr_regionizer::Pipes<T>::reset() {
+  for (auto& pipe : pipes_) {
+    pipe.reset();
+  }
+}
+
+template <typename T>
+void l1ct::tdr_regionizer::Pipes<T>::setTaps(size_t taps) {
+  for (auto& pipe : pipes_) {
+    pipe.setTaps(taps);
+  }
+}
+
 // BUFFER ENTRY AND BUFFER
 template <typename T>
 l1ct::tdr_regionizer::BufferEntry<T>::BufferEntry(
@@ -102,15 +117,20 @@ l1ct::tdr_regionizer::Regionizer<T>::Regionizer(unsigned int neta,
       bigRegionMax_(bigRegionMax),
       nclocks_(nclocks),
       ndup_(ndup),
-      pipe_(neta * nphi / SRS_PER_RAM),
+      pipes_(neta * nphi),
       smallRegionObjects_(neta * nphi),
       debug_(debug) {}
 
 template <typename T>
 void l1ct::tdr_regionizer::Regionizer<T>::initSectors(const std::vector<DetectorSector<T>>& sectors) {
   assert(nsectors_ == 0);
+
+  // we need a mapping of physical (what's in the sectors variable) to logical,
+  // but it's easier to create the inverse, first
+
   for (const auto& sector : sectors) {
     if (isInBigRegionLoose(sector.region)) {
+      invsectormap_.push_back(sectors_.size());
       sectors_.push_back(sector.region);
     }
   }
@@ -119,6 +139,41 @@ void l1ct::tdr_regionizer::Regionizer<T>::initSectors(const std::vector<Detector
   if (debug_) {
     dbgCout() << "Number of sectors: " << nsectors_ << std::endl;
   }
+
+  if (debug_) {
+    dbgCout() << "invsectormap_ before sort:";
+    for (auto val : invsectormap_) {
+      dbgCout() << " " << val;
+    }
+    dbgCout() << std::endl;
+  }
+
+  std::sort(
+      invsectormap_.begin(), invsectormap_.end(), [this](size_t a, size_t b) { return this->sortSectors(a, b); });
+
+  if (debug_) {
+    dbgCout() << "invsectormap_ after sort:";
+    for (auto val : invsectormap_) {
+      dbgCout() << " " << val;
+    }
+    dbgCout() << std::endl;
+  }
+
+  // now invert the invsectormap_
+  sectormap_.resize(invsectormap_.size());
+  for (size_t i = 0; i < invsectormap_.size(); ++i) {
+    sectormap_[invsectormap_[i]] = i;
+  }
+
+  if (debug_) {
+    dbgCout() << "sectormap after sort:";
+    for (auto val : sectormap_) {
+      dbgCout() << " " << val;
+    }
+    dbgCout() << std::endl;
+  }
+
+  pipes_.setTaps(nsectors_ * ndup_);
 }
 
 template <typename T>
@@ -126,10 +181,12 @@ void l1ct::tdr_regionizer::Regionizer<T>::initSectors(const DetectorSector<T>& s
   assert(nsectors_ == 0);
   nsectors_ = 1;
   sectors_.push_back(sector.region);
+  sectormap_.push_back(0);
   buffers_.resize(nsectors_ * ndup_);
   if (debug_) {
     dbgCout() << "Number of sectors: " << nsectors_ << std::endl;
   }
+  pipes_.setTaps(nsectors_ * ndup_);
 }
 
 template <typename T>
@@ -142,13 +199,23 @@ void l1ct::tdr_regionizer::Regionizer<T>::fillBuffers(const DetectorSector<T>& s
   setBuffers(fillLinks(sector));
 }
 
-// this function is for sorting small regions first
+// this function is for sorting small regions
 // in eta first, then in phi
 template <typename T>
 bool l1ct::tdr_regionizer::Regionizer<T>::sortRegionsRegular(size_t a, size_t b) const {
   // first do eta
   auto etaa = regions_[a].intEtaCenter();
   auto etab = regions_[b].intEtaCenter();
+  auto phia = regions_[a].intPhiCenter();
+  auto phib = regions_[b].intPhiCenter();
+  return sortRegionsHelper(etaa, etab, phia, phib);
+}
+
+// this function is for sorting small regions
+// in eta first, then in phi
+template <typename T>
+bool l1ct::tdr_regionizer::Regionizer<T>::sortRegionsHelper(int etaa, int etab, int phia, int phib) const {
+  // first do eta
   if (etaa < etab) {
     return true;
   } else if (etaa > etab) {
@@ -156,8 +223,6 @@ bool l1ct::tdr_regionizer::Regionizer<T>::sortRegionsRegular(size_t a, size_t b)
   }
 
   // if here, then etaa == etab, move to phi
-  auto phia = regions_[a].intPhiCenter();
-  auto phib = regions_[b].intPhiCenter();
   if (bigRegionMax_ < bigRegionMin_) {
     // the wraparound case
     if (phia > bigRegionMin_ && phib < bigRegionMax_) {
@@ -172,6 +237,18 @@ bool l1ct::tdr_regionizer::Regionizer<T>::sortRegionsRegular(size_t a, size_t b)
   } else {
     return false;
   }
+}
+
+// this function is for sorting the sectors
+// in eta first, then in phi
+template <typename T>
+bool l1ct::tdr_regionizer::Regionizer<T>::sortSectors(size_t a, size_t b) const {
+  // first do eta
+  auto etaa = sectors_[a].intEtaCenter();
+  auto etab = sectors_[b].intEtaCenter();
+  auto phia = sectors_[a].intPhiCenter();
+  auto phib = sectors_[b].intPhiCenter();
+  return sortRegionsHelper(etaa, etab, phia, phib);
 }
 
 template <typename T>
@@ -241,7 +318,7 @@ std::vector<size_t> l1ct::tdr_regionizer::Regionizer<T>::getSmallRegions(int glb
 
   // only iterate over regions covered by board
   for (size_t i = 0; i < regionmap_.size(); i++) {
-    auto regionidx = regionmap_[i];
+    auto regionidx = regionIndex(i);
     int regphi = phi_wrap(glbphi - regions_[regionidx].intPhiCenter());
     int regeta = glbeta - regions_[regionidx].intEtaCenter();
 
@@ -293,7 +370,7 @@ void l1ct::tdr_regionizer::Regionizer<T>::addToSmallRegion(l1ct::tdr_regionizer:
     auto rawObj = pipeEntry.obj();
 
     // in small region, the relative eta and phi are based on a different center, so need to update
-    auto realRegIdx = regionmap_[pipeEntry.sr()];
+    auto realRegIdx = regionIndex(pipeEntry.sr());
     auto etaC = regions_[realRegIdx].intEtaCenter();
     auto phiC = regions_[realRegIdx].intPhiCenter();
 
@@ -316,38 +393,46 @@ void l1ct::tdr_regionizer::Regionizer<T>::run() {
     bool processedAll = true; // to be overwritten if not the case
 
     // handle the fifo buffers
-    for (auto& buffer : buffers_) {
+    for (size_t bufIdx = 0; bufIdx < buffers_.size(); ++bufIdx) {
+      auto& buffer = buffers_[bufIdx];
       if (buffer.timeOfNextObject() >= 0) {
         processedAll = false;
       }
       if (buffer.timeOfNextObject() == loopCount) {
         // time to handle the buffer entry
-        auto nextSR = buffer.front().nextSR();
+        const auto nextSR = buffer.front().nextSR();
         if (nextSR < 0 || smallRegionObjects_[nextSR].size() == maxobjects_) {
           // throwout or SR full, just get rid of object
           buffer.popEntry(loopCount);
         } else {
-          auto pipeIdx = pipeIndex(nextSR);
-          if (pipe_.valid(pipeIdx)) {
+          const auto logicBufIdx = logicBuffIndex(bufIdx);
+          if (pipes_.valid(nextSR, logicBufIdx)) {
             // The pipe already has an entry, so wait till space is available
             buffer.updateNextObjectTime(loopCount);
           } else {
             // put the value in the pipe
-            pipe_.addEntry(pipeIdx, buffer.popEntry(loopCount));
+            pipes_.addEntry(nextSR, logicBufIdx, buffer.popEntry(loopCount));
           }
         }
       }
 
     }
-    addToSmallRegion(pipe_.popEntry());
+
+    // add the small regions
+    for (size_t i = 0; i < pipes_.size(); i++) {
+      addToSmallRegion(pipes_.popEntry(i));
+    }
 
     if (debug_) printDebug(loopCount);
 
     // check ot see if you have processed all
     if (processedAll) {
-      // first clear the pipe
-      for (int i = 0; i < pipe_.size(); i++) {
-        addToSmallRegion(pipe_.popEntry());
+      // first clear the pipes
+      for (size_t tap = 0; tap < pipes_.numTaps(); tap++) {
+        // add the small regions
+        for (size_t i = 0; i < pipes_.size(); i++) {
+          addToSmallRegion(pipes_.popEntry(i));
+        }
       }
       if (debug_) printDebug(1000);
       break;
@@ -360,7 +445,7 @@ void l1ct::tdr_regionizer::Regionizer<T>::reset() {
   for (auto& buffer : buffers_) {
     buffer.reset();
   }
-  pipe_.reset();
+  pipes_.reset();
   for (auto& smallRegionObject : smallRegionObjects_) {
     smallRegionObject.clear();
   }
@@ -370,21 +455,34 @@ template <typename T>
 std::map<size_t, std::vector<T>> l1ct::tdr_regionizer::Regionizer<T>::fillRegions(bool doSort) {
   std::map<size_t, std::vector<T>> srMap;
   for (size_t sr = 0; sr < smallRegionObjects_.size(); sr++) {
-    srMap[regionmap_[sr]] = smallRegionObjects_[sr];
+    srMap[regionIndex(sr)] = smallRegionObjects_[sr];
     if (doSort) {
-      std::sort(srMap[regionmap_[sr]].begin(), srMap[regionmap_[sr]].end(), std::greater<>());
+      std::sort(srMap[regionIndex(sr)].begin(), srMap[regionIndex(sr)].end(), std::greater<>());
     }
   }
   return srMap;
 }
 
+
+template <typename T>
+size_t l1ct::tdr_regionizer::Regionizer<T>::logicBuffIndex(size_t bufIdx) const {
+    const unsigned int sector = bufIdx / ndup_;
+    auto logSector = sectormap_[sector];
+    return logSector * ndup_ + bufIdx % ndup_;
+}
+
+
 template <typename T>
 void l1ct::tdr_regionizer::Regionizer<T>::printDebug(int count) const {
   dbgCout() << "BUFFERS, (for " << numBuffers() << " buffers)" << std::endl;
-  dbgCout() << count << "\tbuffer\titem\tpt\teta\tphi\tclock" << std::endl;
-  for (unsigned int buffer = 0; buffer < numBuffers(); buffer++) {
+  dbgCout() << count << "\tbuffer\tlogical\titem\tpt\teta\tphi\tclock" << std::endl;
+  for (auto buffer : invsectormap_) {
     for (unsigned int j = 0; j < numEntries(buffer); j++) {
-      dbgCout() << "\t" << buffer << "\t" << j << "\t" << buffers_[buffer].pt(j) << "\t" << buffers_[buffer].glbEta(j)
+      dbgCout() << "\t" << buffer
+                << "\t" << logicBuffIndex(buffer)
+                << "\t" << j
+                << "\t" << buffers_[buffer].pt(j)
+                << "\t" << buffers_[buffer].glbEta(j)
                 << "\t" << buffers_[buffer].glbPhi(j)
                 << "\t" << buffers_[buffer].clock(j) << std::endl;
     }
@@ -393,7 +491,7 @@ void l1ct::tdr_regionizer::Regionizer<T>::printDebug(int count) const {
   dbgCout() << "SMALL REGIONS" << std::endl;
   for (unsigned int region = 0; region < neta_ * nphi_; region++) {
     dbgCout() << count << "\tregion\t\titem\tpt\tloceta\tlocphi" << std::endl;
-    auto realRegIdx = regionmap_[region];
+    auto realRegIdx = regionIndex(region);
     auto etaC = regions_[realRegIdx].intEtaCenter();
     auto phiC = regions_[realRegIdx].intPhiCenter();
     for (unsigned int j = 0; j < smallRegionObjects_[region].size(); j++) {
@@ -445,4 +543,3 @@ std::vector<std::vector<T>> l1ct::tdr_regionizer::Regionizer<T>::fillLinks(const
   }
   return links;
 }
-
