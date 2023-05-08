@@ -297,7 +297,7 @@ bool l1ct::tdr_regionizer::Regionizer<T>::isInBigRegionLoose(const PFRegionEmu& 
 }
 
 template <>
-bool l1ct::tdr_regionizer::Regionizer<l1ct::TkObjEmu>::isInBigRegionLoose(const PFRegionEmu& reg) const {
+inline bool l1ct::tdr_regionizer::Regionizer<l1ct::TkObjEmu>::isInBigRegionLoose(const PFRegionEmu& reg) const {
   auto phi = reg.intPhiCenter();
   auto brmax = phi_wrap(bigRegionMax_ + 2 * reg.hwPhiHalfWidth.to_int());
   auto brmin = phi_wrap(bigRegionMin_ - 2 * reg.hwPhiHalfWidth.to_int());
