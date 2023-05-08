@@ -209,8 +209,8 @@ namespace l1ct {
                  unsigned int maxobjects,
                  int bigRegionMin,
                  int bigRegionMax,  // the phi range covered by this board
-                 int nclocks,
-                 int ndup = 1,  // how much one duplicates the inputs (to increase processing bandwidth)
+                 unsigned int nclocks,
+                 unsigned int ndup = 1,  // how much one duplicates the inputs (to increase processing bandwidth)
                  bool debug = false);
 
       void initSectors(const std::vector<DetectorSector<T>>& sectors);
@@ -283,9 +283,9 @@ namespace l1ct {
       /// the maximum phi of this board
       int bigRegionMax_;
       /// the number of clocks to receive one event
-      int nclocks_;
+      unsigned int nclocks_;
       /// How many buffers per link (default 1)
-      int ndup_;
+      unsigned int ndup_;
 
       /// the region information assopciated with each input sector
       std::vector<l1ct::PFRegionEmu> sectors_;

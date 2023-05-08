@@ -105,8 +105,8 @@ l1ct::tdr_regionizer::Regionizer<T>::Regionizer(unsigned int neta,
                                                 unsigned int maxobjects,
                                                 int bigRegionMin,
                                                 int bigRegionMax,
-                                                int nclocks,
-                                                int ndup,
+                                                unsigned int nclocks,
+                                                unsigned int ndup,
                                                 bool debug)
     : neta_(neta),
       nphi_(nphi),
@@ -322,7 +322,7 @@ std::vector<size_t> l1ct::tdr_regionizer::Regionizer<T>::getSmallRegions(int glb
 
     // add a special check to not have 3 eta regions
     if (regions_[regionidx].isInside(regeta, regphi) &&
-        !(glbeta == 57 && regeta == -115 || glbeta == -57 && regeta == 115)) {
+        !((glbeta == 57 && regeta == -115) || (glbeta == -57 && regeta == 115))) {
       srIndices.push_back(i);
     }
   }

@@ -11,7 +11,7 @@ l1ct::TDRRegionizerEmulator::TDRRegionizerEmulator(const edm::ParameterSet& iCon
                             iConfig.getParameter<uint32_t>("nCalo"),
                             iConfig.getParameter<uint32_t>("nEmCalo"),
                             iConfig.getParameter<uint32_t>("nMu"),
-                            iConfig.getParameter<int32_t>("nClocks"),
+                            iConfig.getParameter<uint32_t>("nClocks"),
                             iConfig.getParameter<std::vector<int32_t>>("bigRegionEdges"),
                             iConfig.getParameter<bool>("doSort")) {
   debug_ = iConfig.getUntrackedParameter<bool>("debug", false);
@@ -22,7 +22,7 @@ l1ct::TDRRegionizerEmulator::TDRRegionizerEmulator(uint32_t ntk,
                                                    uint32_t ncalo,
                                                    uint32_t nem,
                                                    uint32_t nmu,
-                                                   int32_t nclocks,
+                                                   uint32_t nclocks,
                                                    std::vector<int32_t> bigRegionEdges,
                                                    bool dosort)
     : RegionizerEmulator(),
@@ -37,10 +37,6 @@ l1ct::TDRRegionizerEmulator::TDRRegionizerEmulator(uint32_t ntk,
       nphiInBR_(3),
       init_(false) {
   nBigRegions_ = bigRegionEdges_.size() - 1;
-  MAX_TK_OBJ_ = nclocks_ * 2 / 3;  // 2 objects per 3 clocks
-  MAX_EMCALO_OBJ_ = nclocks_;      // 1 object per clock
-  MAX_HADCALO_OBJ_ = nclocks_;     // 1 object per clock
-  MAX_MU_OBJ_ = nclocks_;          // 1 object per clock
 }
 
 l1ct::TDRRegionizerEmulator::~TDRRegionizerEmulator() {}
@@ -55,7 +51,7 @@ void l1ct::TDRRegionizerEmulator::initSectorsAndRegions(const RegionizerDecodedI
 
   for (unsigned int i = 0; i < nBigRegions_; i++) {
     tkRegionizers_.emplace_back(
-        netaInBR_, nphiInBR_, ntk_, bigRegionEdges_[i], bigRegionEdges_[i + 1], nclocks_, 1, true);
+        netaInBR_, nphiInBR_, ntk_, bigRegionEdges_[i], bigRegionEdges_[i + 1], nclocks_, 1, false);
     // duplicate input fibers to increase to increasee the throughput, since lots of data comes in per fiber
     hadCaloRegionizers_.emplace_back(
         netaInBR_, nphiInBR_, ncalo_, bigRegionEdges_[i], bigRegionEdges_[i + 1], nclocks_, 2, false);
