@@ -42,47 +42,62 @@ l1ct::tdr_regionizer::BufferEntry<T>::BufferEntry(
 }
 
 template <typename T>
-void l1ct::tdr_regionizer::Buffer<T>::addEntry(
+inline void l1ct::tdr_regionizer::Buffer<T>::addEntry(
     const T& obj, std::vector<size_t> srIndices, int glbeta, int glbphi, unsigned int dupNum, unsigned int ndup) {
   // dupNum is the duplicate number of this buffer (int range 0 to ndup_-1)
-  data_.emplace_back(obj, srIndices, glbeta, glbphi, clkindex_ + dupNum);
+  auto objClk = nextObjClk(ndup);
+  data_.emplace_back(obj, srIndices, glbeta, glbphi, objClk);
   if (timeOfNextObject_ < 0) {
-    timeOfNextObject_ = clkindex_ + dupNum;
+    timeOfNextObject_ = objClk;
   }
-  clkindex_ += ndup;
-}
-//explicit for tracker to handle clocking
-template <>
-inline void l1ct::tdr_regionizer::Buffer<l1ct::TkObjEmu>::addEntry(const l1ct::TkObjEmu& obj,
-                                                                   std::vector<size_t> srIndices,
-                                                                   int glbeta,
-                                                                   int glbphi,
-                                                                   unsigned int dupNum,
-                                                                   unsigned int ndup) {
-  assert(ndup == 1);  // don't currently support duplicates for tracks
-  data_.emplace_back(obj, srIndices, glbeta, glbphi, clkindex_);
-  if (timeOfNextObject_ < 0) {
-    timeOfNextObject_ = clkindex_ + dupNum;
-  }
-  ++clkindex_;
-  if (clkindex_ % 3 == 2)
-    ++clkindex_;  //this is for tracker, could I get this generically maybe?
 }
 
 template <typename T>
 void l1ct::tdr_regionizer::Buffer<T>::updateNextObjectTime(int currTime) {
   if (data_.size() > 0) {
-    timeOfNextObject_ = std::max(front().clock(), static_cast<unsigned int>(currTime + 1));
+    timeOfNextObject_ = std::max(front().clock() + PIPELINE_DELAY, static_cast<unsigned int>(currTime + 1));
   } else {
     timeOfNextObject_ = -1;
   }
 }
 
 template <typename T>
-l1ct::tdr_regionizer::PipeEntry<T> l1ct::tdr_regionizer::Buffer<T>::popEntry(int currTime) {
+inline unsigned int l1ct::tdr_regionizer::Buffer<T>::nextObjClk(unsigned int ndup) {
+
+  unsigned int nextVal = std::max(clkindex360_, clkindex240_) / 3;
+
+  clkindex360_ += 2 * ndup;
+  clkindex240_ += 3;
+
+  return nextVal;
+}
+
+// explicit for tracks
+template <>
+inline unsigned int l1ct::tdr_regionizer::Buffer<l1ct::TkObjEmu>::nextObjClk(unsigned int ndup) {
+
+  assert(ndup == 1);
+
+  unsigned int nextVal = std::max(clkindex360_, clkindex240_) / 3;
+
+  clkindex360_ += 2;
+  if ((clkindex360_ - INIT360) % 6 == 4) {
+    clkindex360_ += 2;
+  }
+
+  clkindex240_ += 3;
+
+  return nextVal;
+}
+
+template <typename T>
+l1ct::tdr_regionizer::PipeEntry<T> l1ct::tdr_regionizer::Buffer<T>::popEntry(int currTime, bool debug) {
   if (front().nextSR() < 0) {
     // throwout
     pop();
+    if (debug) {
+      dbgCout() << "updating time clock = " << front().clock() << ", currTime = " << currTime << std::endl;
+    }
     updateNextObjectTime(currTime);
     return l1ct::tdr_regionizer::PipeEntry<T>();
   }
@@ -93,7 +108,13 @@ l1ct::tdr_regionizer::PipeEntry<T> l1ct::tdr_regionizer::Buffer<T>::popEntry(int
   if (front().nextSR() < 0) {
     // no more SRs for current front
     pop();
+  } else if (debug) {
+    dbgCout() << "Remain on same object, nextSR = " << front().nextSR() << std::endl;
   }
+  if (debug) {
+    dbgCout() << "updating time clock = " << front().clock() << ", currTime = " << currTime << std::endl;
+  }
+
   updateNextObjectTime(currTime);
   return pipeEntry;
 }
@@ -380,6 +401,7 @@ void l1ct::tdr_regionizer::Regionizer<T>::addToSmallRegion(l1ct::tdr_regionizer:
   }
 }
 
+
 template <typename T>
 void l1ct::tdr_regionizer::Regionizer<T>::run() {
   if (debug_)
@@ -398,15 +420,15 @@ void l1ct::tdr_regionizer::Regionizer<T>::run() {
       if (buffer.timeOfNextObject() == loopCount) {
         // time to handle the buffer entry
         const auto nextSR = buffer.front().nextSR();
-        // if (debug_) {
-        //   dbgCout() << "handling bufIdx " << bufIdx << " object with SR = " << nextSR
-        //             << ", pt = " << buffer.pt()
-        //             << ", glbeta = " << buffer.glbEta()
-        //             << ", glbphi = " << buffer.glbPhi() << std::endl;
-        // }
+        if (debug_) {
+          dbgCout() << "handling bufIdx " << bufIdx << " object with SR = " << nextSR
+                    << ", pt = " << buffer.pt()
+                    << ", glbeta = " << buffer.glbEta()
+                    << ", glbphi = " << buffer.glbPhi() << std::endl;
+        }
         if (nextSR < 0 || buffer.pt() == 0 || smallRegionObjects_[nextSR].size() == maxobjects_) {
           // throwout or SR full, just get rid of object
-          buffer.popEntry(loopCount);
+          buffer.popEntry(loopCount, debug_);
         } else {
           const auto logicBufIdx = logicBuffIndex(bufIdx);
           if (pipes_.valid(nextSR, logicBufIdx)) {
@@ -414,7 +436,7 @@ void l1ct::tdr_regionizer::Regionizer<T>::run() {
             buffer.updateNextObjectTime(loopCount);
           } else {
             // put the value in the pipe
-            pipes_.addEntry(nextSR, logicBufIdx, buffer.popEntry(loopCount));
+            pipes_.addEntry(nextSR, logicBufIdx, buffer.popEntry(loopCount, debug_));
           }
         }
       }

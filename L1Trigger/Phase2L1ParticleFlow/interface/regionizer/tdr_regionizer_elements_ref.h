@@ -156,7 +156,7 @@ namespace l1ct {
     template <typename T>
     class Buffer {
     public:
-      Buffer() : clkindex_(0), timeOfNextObject_(-1) {}
+      Buffer() : clkindex360_(INIT360), clkindex240_(INIT240), timeOfNextObject_(-1) {}
 
       void addEntry(
           const T& obj, std::vector<size_t> srs, int glbeta, int glbphi, unsigned int dupNum, unsigned int ndup);
@@ -179,25 +179,39 @@ namespace l1ct {
       unsigned int numEntries() const { return data_.size(); }
 
       /// pop the first entry, formatted for inclusion in pipe
-      PipeEntry<T> popEntry(int currTime);
+      PipeEntry<T> popEntry(int currTime, bool debug);
 
       int timeOfNextObject() const { return timeOfNextObject_; }
 
       void reset() {
-        clkindex_ = 0;
+        clkindex360_ = INIT360;
+        clkindex240_ = INIT240;
         data_.clear();
         timeOfNextObject_ = -1;
       }
 
     private:
+      /// pipeline delay after which data is available
+      static unsigned int constexpr PIPELINE_DELAY = 1;
+
+      // used when building up the linkobjclk_ entries for the BufferEntries
+      unsigned int nextObjClk(unsigned int ndup);
+
       // transient--used only during event construction, not used after
-      unsigned int clkindex_;
+      // Counts in 1.39ns increments (i.e. 360 increments by 2, 240 by 3)
+      unsigned int clkindex360_;
+      unsigned int clkindex240_;
+
+      static unsigned int constexpr INIT360 = 0;
+      static unsigned int constexpr INIT240 = 0;
 
       /// The actual data
       std::deque<BufferEntry<T>> data_;
 
       /// the time of the next object in the buffer (-1 if none)
       int timeOfNextObject_;
+
+
     };
 
     template <typename T>
@@ -244,9 +258,6 @@ namespace l1ct {
       void addToBuffer(const T& obj, unsigned int index, unsigned int dupNum);
       void setBuffer(const std::vector<T>& objvec, unsigned int index);
       void setBuffers(const std::vector<std::vector<T>>&& objvecvec);
-
-      /// This either removes the next object on the buffer or inrements the count; It returns the next time
-      int popBufferEntry(int bufferIndex, int currentTimeOfObject);
 
       /// This retruns the linearized small region associated with the given item (-1 is throwout)
       int nextSR(unsigned int linknum, unsigned int index = 0) { return buffers_[linknum].nextSR(index); }
