@@ -192,7 +192,7 @@ namespace l1ct {
 
     private:
       /// pipeline delay after which data is available
-      static unsigned int constexpr PIPELINE_DELAY = 1;
+      static unsigned int constexpr PIPELINE_DELAY = 0;
 
       // used when building up the linkobjclk_ entries for the BufferEntries
       unsigned int nextObjClk(unsigned int ndup);
@@ -202,7 +202,7 @@ namespace l1ct {
       unsigned int clkindex360_;
       unsigned int clkindex240_;
 
-      static unsigned int constexpr INIT360 = 0;
+      static unsigned int constexpr INIT360 = 1;
       static unsigned int constexpr INIT240 = 0;
 
       /// The actual data

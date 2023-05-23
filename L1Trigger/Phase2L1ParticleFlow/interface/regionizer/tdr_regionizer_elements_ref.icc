@@ -64,6 +64,10 @@ void l1ct::tdr_regionizer::Buffer<T>::updateNextObjectTime(int currTime) {
 template <typename T>
 inline unsigned int l1ct::tdr_regionizer::Buffer<T>::nextObjClk(unsigned int ndup) {
 
+  if (ndup == 2) {
+    dbgCout() << "clkindex360_ = " << clkindex360_ << ", clkindex240_ = " << clkindex240_ << std::endl;
+  }
+
   unsigned int nextVal = std::max(clkindex360_, clkindex240_) / 3;
 
   clkindex360_ += 2 * ndup;
@@ -108,8 +112,24 @@ l1ct::tdr_regionizer::PipeEntry<T> l1ct::tdr_regionizer::Buffer<T>::popEntry(int
   if (front().nextSR() < 0) {
     // no more SRs for current front
     pop();
-  } else if (debug) {
-    dbgCout() << "Remain on same object, nextSR = " << front().nextSR() << std::endl;
+  } else {
+    if (debug) {
+      dbgCout() << "Remain on same object, nextSR = " << front().nextSR() << std::endl;
+    }
+    // this is a processing_stall, but throwouts that follow can still be dropped
+    if (numEntries() > 1) {
+      // check if the next has arrived and is throwout
+        if (debug) {
+          dbgCout() << "Have a following object with time " << data_[1].clock() << ", nextSR = " << data_[1].nextSR() << " and pt = " << pt(1) << std::endl;
+        }
+
+      if (static_cast<int>(data_[1].clock()) <= currTime + 1 && data_[1].nextSR() == -1) {
+        if (debug) {
+          dbgCout() << "removing a following throwout with time " << data_[1].clock() << std::endl;
+        }
+        data_.erase(data_.begin() + 1);
+      }
+    }
   }
   if (debug) {
     dbgCout() << "updating time clock = " << front().clock() << ", currTime = " << currTime << std::endl;
