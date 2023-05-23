@@ -64,10 +64,6 @@ void l1ct::tdr_regionizer::Buffer<T>::updateNextObjectTime(int currTime) {
 template <typename T>
 inline unsigned int l1ct::tdr_regionizer::Buffer<T>::nextObjClk(unsigned int ndup) {
 
-  if (ndup == 2) {
-    dbgCout() << "clkindex360_ = " << clkindex360_ << ", clkindex240_ = " << clkindex240_ << std::endl;
-  }
-
   unsigned int nextVal = std::max(clkindex360_, clkindex240_) / 3;
 
   clkindex360_ += 2 * ndup;
@@ -115,20 +111,31 @@ l1ct::tdr_regionizer::PipeEntry<T> l1ct::tdr_regionizer::Buffer<T>::popEntry(int
   } else {
     if (debug) {
       dbgCout() << "Remain on same object, nextSR = " << front().nextSR() << std::endl;
+
+      if (numEntries() > 1) {
+        dbgCout() << "Have a following object with time " << data_[1].clock() << ", nextSR = " << data_[1].nextSR() << " and pt = " << pt(1) << std::endl;
+      }
+      if (numEntries() > 2) {
+        dbgCout() << "Have a two-back object with time " << data_[2].clock() << ", nextSR = " << data_[2].nextSR() << " and pt = " << pt(2) << std::endl;
+      }
+
     }
     // this is a processing_stall, but throwouts that follow can still be dropped
-    if (numEntries() > 1) {
-      // check if the next has arrived and is throwout
-        if (debug) {
-          dbgCout() << "Have a following object with time " << data_[1].clock() << ", nextSR = " << data_[1].nextSR() << " and pt = " << pt(1) << std::endl;
-        }
-
-      if (static_cast<int>(data_[1].clock()) <= currTime + 1 && data_[1].nextSR() == -1) {
-        if (debug) {
-          dbgCout() << "removing a following throwout with time " << data_[1].clock() << std::endl;
-        }
-        data_.erase(data_.begin() + 1);
+    // due to the pipeline have to look two ticks back
+    if (numEntries() > 1
+        && data_[1].nextSR() == -1
+        && static_cast<int>(data_[1].clock()) == currTime + 2) {
+      if (debug) {
+        dbgCout() << "removing a following throwout with time " << data_[1].clock() << std::endl;
       }
+      data_.erase(data_.begin() + 1);
+    } else if (numEntries() > 2
+               && data_[2].nextSR() == -1
+               && static_cast<int>(data_[2].clock()) <= currTime + 2) {
+      if (debug) {
+        dbgCout() << "removing the two-back throwout with time " << data_[2].clock() << std::endl;
+      }
+      data_.erase(data_.begin() + 2);
     }
   }
   if (debug) {
@@ -441,7 +448,7 @@ void l1ct::tdr_regionizer::Regionizer<T>::run() {
         // time to handle the buffer entry
         const auto nextSR = buffer.front().nextSR();
         if (debug_) {
-          dbgCout() << "handling bufIdx " << bufIdx << " object with SR = " << nextSR
+          dbgCout() << "loop count " << loopCount << ", handling bufIdx " << bufIdx << " object with SR = " << nextSR
                     << ", pt = " << buffer.pt()
                     << ", glbeta = " << buffer.glbEta()
                     << ", glbphi = " << buffer.glbPhi() << std::endl;
