@@ -374,6 +374,13 @@ std::vector<size_t> l1ct::tdr_regionizer::Regionizer<T>::getSmallRegions(int glb
       srIndices.push_back(i);
     }
   }
+
+  // In a silly convention, the order of these nneds to be modified if there are 4.
+  if (srIndices.size() == 4) {
+    auto ent1 = srIndices[1];
+    srIndices[1] = srIndices[2];
+    srIndices[2] = ent1;
+  }
   return srIndices;
 }
 
