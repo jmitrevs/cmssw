@@ -191,9 +191,6 @@ namespace l1ct {
       }
 
     private:
-      /// pipeline delay after which data is available
-      static unsigned int constexpr PIPELINE_DELAY = 0;
-
       // used when building up the linkobjclk_ entries for the BufferEntries
       unsigned int nextObjClk(unsigned int ndup);
 
@@ -321,6 +318,12 @@ namespace l1ct {
 
       /// The objects in each small region handled in board; Indexing corresponds to that in regionmap_
       std::vector<std::vector<T>> smallRegionObjects_;
+
+      /// Whether this is the first event (since timing is a bit different then)
+      bool firstEvent_;
+
+      /// This is the delay (only applied after first event) before processing starts
+      static unsigned int constexpr DELAY_TO_START = 10;
 
       bool debug_;
     };

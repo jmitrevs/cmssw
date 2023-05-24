@@ -55,7 +55,7 @@ inline void l1ct::tdr_regionizer::Buffer<T>::addEntry(
 template <typename T>
 void l1ct::tdr_regionizer::Buffer<T>::updateNextObjectTime(int currTime) {
   if (data_.size() > 0) {
-    timeOfNextObject_ = std::max(front().clock() + PIPELINE_DELAY, static_cast<unsigned int>(currTime + 1));
+    timeOfNextObject_ = std::max(front().clock(), static_cast<unsigned int>(currTime + 1));
   } else {
     timeOfNextObject_ = -1;
   }
@@ -111,14 +111,6 @@ l1ct::tdr_regionizer::PipeEntry<T> l1ct::tdr_regionizer::Buffer<T>::popEntry(int
   } else {
     if (debug) {
       dbgCout() << "Remain on same object, nextSR = " << front().nextSR() << std::endl;
-
-      if (numEntries() > 1) {
-        dbgCout() << "Have a following object with time " << data_[1].clock() << ", nextSR = " << data_[1].nextSR() << " and pt = " << pt(1) << std::endl;
-      }
-      if (numEntries() > 2) {
-        dbgCout() << "Have a two-back object with time " << data_[2].clock() << ", nextSR = " << data_[2].nextSR() << " and pt = " << pt(2) << std::endl;
-      }
-
     }
     // this is a processing_stall, but throwouts that follow can still be dropped
     // due to the pipeline have to look two ticks back
@@ -166,6 +158,7 @@ l1ct::tdr_regionizer::Regionizer<T>::Regionizer(unsigned int neta,
       ndup_(ndup),
       pipes_(neta * nphi),
       smallRegionObjects_(neta * nphi),
+      firstEvent_(true),
       debug_(debug) {}
 
 template <typename T>
@@ -187,36 +180,12 @@ void l1ct::tdr_regionizer::Regionizer<T>::initSectors(const std::vector<Detector
     dbgCout() << "Number of sectors: " << nsectors_ << std::endl;
   }
 
-  if (debug_) {
-    dbgCout() << "invsectormap_ before sort:";
-    for (auto val : invsectormap_) {
-      dbgCout() << " " << val;
-    }
-    dbgCout() << std::endl;
-  }
-
   std::sort(invsectormap_.begin(), invsectormap_.end(), [this](size_t a, size_t b) { return this->sortSectors(a, b); });
-
-  if (debug_) {
-    dbgCout() << "invsectormap_ after sort:";
-    for (auto val : invsectormap_) {
-      dbgCout() << " " << val;
-    }
-    dbgCout() << std::endl;
-  }
 
   // now invert the invsectormap_
   sectormap_.resize(invsectormap_.size());
   for (size_t i = 0; i < invsectormap_.size(); ++i) {
     sectormap_[invsectormap_[i]] = i;
-  }
-
-  if (debug_) {
-    dbgCout() << "sectormap after sort:";
-    for (auto val : sectormap_) {
-      dbgCout() << " " << val;
-    }
-    dbgCout() << std::endl;
   }
 
   pipes_.setTaps(nsectors_ * ndup_);
@@ -440,7 +409,13 @@ template <typename T>
 void l1ct::tdr_regionizer::Regionizer<T>::run() {
   if (debug_)
     printDebug(-1);
-  for (int loopCount = 0; loopCount < 972; loopCount++) {  //this is the max allowable if nothing ever blocks
+
+  // first event doesn't have a delayed start
+  int startTime = firstEvent_ ? 0 : DELAY_TO_START;
+  firstEvent_ = false;
+
+  for (int currTime = startTime; currTime < 972 + startTime; currTime++) {  //this is the max allowable if nothing ever blocks
+  // not positive where 972 comes from. It seems to be 162 * 6
 
     // to exit early
     bool processedAll = true;  // to be overwritten if not the case
@@ -451,33 +426,33 @@ void l1ct::tdr_regionizer::Regionizer<T>::run() {
       if (buffer.timeOfNextObject() >= 0) {
         processedAll = false;
       }
-      if (buffer.timeOfNextObject() == loopCount) {
+      if (buffer.timeOfNextObject() == currTime) {
         // time to handle the buffer entry
         const auto nextSR = buffer.front().nextSR();
         if (debug_) {
-          dbgCout() << "loop count " << loopCount << ", handling bufIdx " << bufIdx << " object with SR = " << nextSR
+          dbgCout() << "Current time " << currTime << ", handling bufIdx " << bufIdx << " object with SR = " << nextSR
                     << ", pt = " << buffer.pt()
                     << ", glbeta = " << buffer.glbEta()
                     << ", glbphi = " << buffer.glbPhi() << std::endl;
         }
         if (nextSR < 0 || buffer.pt() == 0 || smallRegionObjects_[nextSR].size() == maxobjects_) {
           // throwout or SR full, just get rid of object
-          buffer.popEntry(loopCount, debug_);
+          buffer.popEntry(currTime, debug_);
         } else {
           const auto logicBufIdx = logicBuffIndex(bufIdx);
           if (pipes_.valid(nextSR, logicBufIdx)) {
             // The pipe already has an entry, so wait till space is available
-            buffer.updateNextObjectTime(loopCount);
+            buffer.updateNextObjectTime(currTime);
           } else {
             // put the value in the pipe
-            pipes_.addEntry(nextSR, logicBufIdx, buffer.popEntry(loopCount, debug_));
+            pipes_.addEntry(nextSR, logicBufIdx, buffer.popEntry(currTime, debug_));
           }
         }
       }
     }
 
     if (debug_)
-      printDebug(loopCount);
+      printDebug(currTime);
 
     // add the small regions
     for (size_t i = 0; i < pipes_.size(); i++) {
@@ -494,7 +469,7 @@ void l1ct::tdr_regionizer::Regionizer<T>::run() {
         }
       }
       if (debug_)
-        printDebug(1000);
+        printDebug(2000);
       break;
     }
   }  //end main loop
@@ -509,6 +484,7 @@ void l1ct::tdr_regionizer::Regionizer<T>::reset() {
   for (auto& smallRegionObject : smallRegionObjects_) {
     smallRegionObject.clear();
   }
+  firstEvent_ = true;
 }
 
 template <typename T>
