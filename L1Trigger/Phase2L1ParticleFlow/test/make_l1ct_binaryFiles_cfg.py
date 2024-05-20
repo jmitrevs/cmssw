@@ -1,5 +1,6 @@
 import argparse
 import sys
+import math
 
 # example: cmsRun L1Trigger/Phase2L1ParticleFlow/test/make_l1ct_patternFiles_cfg.py --patternFilesOFF
 # example: cmsRun L1Trigger/Phase2L1ParticleFlow/test/make_l1ct_patternFiles_cfg.py --dumpFilesOFF --serenity
@@ -34,7 +35,7 @@ process.MessageLogger.cerr.FwkReport.reportEvery = 1
 
 process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring('file:inputs110X.root'),
-    inputCommands = cms.untracked.vstring("keep *", 
+    inputCommands = cms.untracked.vstring("keep *",
             "drop l1tPFClusters_*_*_*",
             "drop l1tPFTracks_*_*_*",
             "drop l1tPFCandidates_*_*_*",
@@ -65,11 +66,14 @@ from L1Trigger.L1CaloTrigger.l1tPhase2L1CaloEGammaEmulator_cfi import l1tPhase2L
 process.l1tPhase2L1CaloEGammaEmulator = l1tPhase2L1CaloEGammaEmulator.clone()
 from L1Trigger.L1CaloTrigger.l1tPhase2CaloPFClusterEmulator_cfi import l1tPhase2CaloPFClusterEmulator
 process.l1tPhase2CaloPFClusterEmulator = l1tPhase2CaloPFClusterEmulator.clone()
+from L1Trigger.L1CaloTrigger.l1tPhase2GCTBarrelToCorrelatorLayer1Emulator_cfi import l1tPhase2GCTBarrelToCorrelatorLayer1Emulator
+process.l1tPhase2GCTBarrelToCorrelatorLayer1Emulator = l1tPhase2GCTBarrelToCorrelatorLayer1Emulator.clone()
 
 process.L1TInputTask = cms.Task(
     process.l1tSAMuonsGmt,
     process.l1tPhase2L1CaloEGammaEmulator,
-    process.l1tPhase2CaloPFClusterEmulator
+    process.l1tPhase2CaloPFClusterEmulator,
+    process.l1tPhase2GCTBarrelToCorrelatorLayer1Emulator
 )
 
 
@@ -94,8 +98,23 @@ process.l1tLayer1BarrelTDR.regionizerAlgoParameters = cms.PSet(
         doSort = cms.bool(False),
         bigRegionEdges = cms.vint32(-560, -80, 400, -560)
     )
+process.l1tLayer1BarrelTDR.pfAlgoParameters.nTrack = 22
+process.l1tLayer1BarrelTDR.pfAlgoParameters.nSelCalo = 15
+process.l1tLayer1BarrelTDR.pfAlgoParameters.nCalo = 15
+process.l1tLayer1BarrelTDR.pfAlgoParameters.nAllNeutral = 27
+process.l1tLayer1BarrelTDR.puAlgoParameters.nTrack = 22
+process.l1tLayer1BarrelTDR.puAlgoParameters.nIn = 27
+process.l1tLayer1BarrelTDR.puAlgoParameters.nOut = 27
+process.l1tLayer1BarrelTDR.puAlgoParameters.finalSortAlgo = "BitonicVHDL"
+process.l1tLayer1BarrelTDR.tkEgAlgoParameters.nTRACK_EGIN = 22
+process.l1tLayer1BarrelTDR.tkEgAlgoParameters.nEMCALO_EGIN = 12
+
 
 process.l1tLayer1BarrelSerenity = process.l1tLayer1Barrel.clone()
+process.l1tLayer1BarrelSerenity.gctEmInputConversionAlgo = cms.string("Ideal")
+process.l1tLayer1BarrelSerenity.gctHadInputConversionAlgo = cms.string("Ideal")
+process.l1tLayer1BarrelSerenity.emClusters = cms.VInputTag(cms.InputTag('l1tPFClustersFromL1EGClusters:selected'))
+process.l1tLayer1BarrelSerenity.hadClusters = cms.VInputTag(cms.InputTag('l1tPFClustersFromCombinedCaloHCal:calibrated'))
 process.l1tLayer1BarrelSerenity.regionizerAlgo = "MultififoBarrel"
 process.l1tLayer1BarrelSerenity.regionizerAlgoParameters = cms.PSet(
         barrelSetup = cms.string("Full54"),
@@ -115,6 +134,12 @@ process.l1tLayer1BarrelSerenity.puAlgoParameters.nTrack = 22
 process.l1tLayer1BarrelSerenity.puAlgoParameters.nIn = 27
 process.l1tLayer1BarrelSerenity.puAlgoParameters.nOut = 27
 process.l1tLayer1BarrelSerenity.puAlgoParameters.finalSortAlgo = "FoldedHybrid"
+process.l1tLayer1BarrelSerenity.caloSectors = cms.VPSet(
+        cms.PSet(
+            etaBoundaries = cms.vdouble(-1.5, 1.5),
+            phiSlices     = cms.uint32(3),
+        )
+    )
 
 if args.serenity:
     process.l1tLayer1.pfProducers[0] = "l1tLayer1BarrelSerenity"
@@ -131,10 +156,11 @@ if not args.patternFilesOFF:
     process.l1tLayer1HGCalNoTK.patternWriters = cms.untracked.VPSet(*hgcalNoTKWriterConfigs)
     process.l1tLayer1HF.patternWriters = cms.untracked.VPSet(*hfWriterConfigs)
 
-process.runPF = cms.Path( 
-        # process.l1tSAMuonsGmt + 
-        # process.l1tPhase2L1CaloEGammaEmulator + 
+process.runPF = cms.Path(
+        # process.l1tSAMuonsGmt +
+        # process.l1tPhase2L1CaloEGammaEmulator +
         # process.l1tPhase2CaloPFClusterEmulator +
+        # process.l1tPhase2GCTBarrelToCorrelatorLayer1Emulator +
         process.l1tGTTInputProducer +
         process.l1tTrackSelectionProducer +
         process.l1tVertexFinderEmulator +
@@ -157,7 +183,7 @@ process.runPF.associate(process.L1TInputTask)
 process.runPF.associate(process.L1TLayer1TaskInputsTask)
 
 #####################################################################################################################
-## Layer 2 e/gamma 
+## Layer 2 e/gamma
 
 if not args.patternFilesOFF:
     process.l1tLayer2EG.writeInPattern = True
@@ -166,7 +192,7 @@ if not args.patternFilesOFF:
     process.l1tLayer2EG.outPatternFile.maxLinesPerFile = _eventsPerFile*54
 
 #####################################################################################################################
-## Layer 2 seeded-cone jets 
+## Layer 2 seeded-cone jets
 if not args.patternFilesOFF:
     process.runPF.insert(process.runPF.index(process.l1tSC8PFL1PuppiCorrectedEmulator)+1, process.l1tLayer2SeedConeJetWriter)
     process.l1tLayer2SeedConeJetWriter.maxLinesPerFile = _eventsPerFile*54
@@ -181,13 +207,13 @@ if args.tm18:
     process.l1tLayer1HGCalTM18 = process.l1tLayer1HGCal.clone()
     process.l1tLayer1HGCalTM18.regionizerAlgo = "BufferedFoldedMultififo"
     process.l1tLayer1HGCalTM18.regionizerAlgoParameters.nClocks = 162
-    del process.l1tLayer1HGCalTM18.regionizerAlgoParameters.nEndcaps 
+    del process.l1tLayer1HGCalTM18.regionizerAlgoParameters.nEndcaps
     del process.l1tLayer1HGCalTM18.regionizerAlgoParameters.nTkLinks
     del process.l1tLayer1HGCalTM18.regionizerAlgoParameters.nCaloLinks
     process.l1tLayer1HGCalNoTKTM18 = process.l1tLayer1HGCalNoTK.clone()
     process.l1tLayer1HGCalNoTKTM18.regionizerAlgo = "BufferedFoldedMultififo"
     process.l1tLayer1HGCalNoTKTM18.regionizerAlgoParameters.nClocks = 162
-    del process.l1tLayer1HGCalNoTKTM18.regionizerAlgoParameters.nEndcaps 
+    del process.l1tLayer1HGCalNoTKTM18.regionizerAlgoParameters.nEndcaps
     del process.l1tLayer1HGCalNoTKTM18.regionizerAlgoParameters.nTkLinks
     del process.l1tLayer1HGCalNoTKTM18.regionizerAlgoParameters.nCaloLinks
     process.l1tLayer1BarrelSerenityTM18 = process.l1tLayer1BarrelSerenity.clone()
