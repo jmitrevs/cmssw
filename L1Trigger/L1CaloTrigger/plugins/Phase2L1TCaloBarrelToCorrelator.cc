@@ -69,16 +69,53 @@ void Phase2GCTBarrelToCorrelatorLayer1::produce(edm::Event& iEvent, const edm::E
   edm::Handle<l1tp2::DigitizedClusterCorrelatorCollection> inputGCTBarrelClusters;
   iEvent.getByToken(digiInputClusterToken_, inputGCTBarrelClusters);
   
+  // All of the clusters (no duplicates)
   auto outputClustersFromBarrel = std::make_unique<l1tp2::GCTBarrelDigiClustersToCorrLayer1Collection>();
 
+  // Clusters output by GCT SLR (duplicates included )
+  auto out_GCT1_SLR1 = std::make_unique<l1tp2::GCTBarrelDigiClustersToCorrLayer1Collection>();
+  auto out_GCT1_SLR3 = std::make_unique<l1tp2::GCTBarrelDigiClustersToCorrLayer1Collection>();
+  auto out_GCT2_SLR1 = std::make_unique<l1tp2::GCTBarrelDigiClustersToCorrLayer1Collection>();
+  auto out_GCT2_SLR3 = std::make_unique<l1tp2::GCTBarrelDigiClustersToCorrLayer1Collection>();
+  auto out_GCT3_SLR1 = std::make_unique<l1tp2::GCTBarrelDigiClustersToCorrLayer1Collection>();
+  auto out_GCT3_SLR3 = std::make_unique<l1tp2::GCTBarrelDigiClustersToCorrLayer1Collection>();
+
   // format digitized correlators in correct format
+  std::cout << "In the Phase2GCTBarrelToCorrelatorLayer1 produce method" << std::endl;
+
+  // Loop over the regions: in order: GCT1 SLR1, GCT1 SLR3, GCT2 SLR1, GCT2 SLR3, GCT3 SLR1, GCT3SLR3
+  int nRegions = 6;
+  float regionCentersInDegrees[nRegions] = {10.0, 70.0, 130.0, -170.0, -110.0, -50.0};
+
+  for (int i = 0; i < nRegions; i++) {
+    for (auto &clusterIn : *inputGCTBarrelClusters.product()) {
+     
+      l1tp2::GCTBarrelDigiClusterToCorrLayer1 clusterOut;
+
+      // Check if this cluster falls into each card 
+      float clusterRealPhiAsDegree = clusterIn.realPhi() * 180/M_PI; 
+      float regionLowerPhiBound = regionCentersInDegrees[i] - 60;
+      float regionUpperPhiBound = regionCentersInDegrees[i] + 60;
+      if ((clusterRealPhiAsDegree > regionLowerPhiBound) && (clusterRealPhiAsDegree < regionUpperPhiBound)) {
+        std::cout << "[INFO: In region: " << i << "]: "; 
+         std::cout << "Found digitized correlator Cluster with pT " << clusterIn.pt() * clusterIn.ptLSB()
+                   << " with iEta and iPhi " << clusterIn.eta() << ", " << clusterIn.phi()
+                  << " and real eta and phi " << clusterIn.realEta() << ", " << clusterIn.realPhi() 
+                  << " where I have converted the real phi to degrees as " << clusterRealPhiAsDegree << std::endl;
+      }
+    }
+  }
+
 
   // TODO: change this dummy example
-  l1tp2::GCTBarrelDigiClusterToCorrLayer1 myCorrL1Cluster;
-  outputClustersFromBarrel->push_back(myCorrL1Cluster);
+  for (auto &clusterIn : *inputGCTBarrelClusters.product()) {
+    std::cout << "Found digitized correlator Cluster with pT " << clusterIn.pt() * clusterIn.ptLSB()
+              << " with iEta and iPhi " << clusterIn.eta() << ", " << clusterIn.phi() << " and real eta and phi " << clusterIn.realEta() << ", " << clusterIn.realPhi() << std::endl;
+    l1tp2::GCTBarrelDigiClusterToCorrLayer1 clusterOut;
+    outputClustersFromBarrel->push_back(clusterOut);
+  }
 
   iEvent.put(std::move(outputClustersFromBarrel), "GCTBarrelDigiClustersToCorrLayer1");
-
 }
 
 //define this as a plug-in
