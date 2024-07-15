@@ -62,8 +62,11 @@
 
   <class name="l1tp2::GCTBarrelDigiClusterToCorrLayer1"/> 
   <class name="std::vector<l1tp2::GCTBarrelDigiClusterToCorrLayer1>" />
-  <class name="l1tp2::GCTBarrelDigiClustersToCorrLayer1Collection" />
-  <class name="edm::Wrapper<l1tp2::GCTBarrelDigiClustersToCorrLayer1Collection>" />
+  <class name="l1tp2::GCTBarrelDigiClusterToCorrLayer1Collection" />
+  <class name="edm::Wrapper<l1tp2::GCTBarrelDigiClusterToCorrLayer1Collection>" />
+
+  <class name="l1tp2::GCTBarrelDigiClusterToCorrLayer1CollectionFullDetector"/> 
+  <class name="edm::Wrapper<l1tp2::GCTBarrelDigiClusterToCorrLayer1CollectionFullDetector>" />
 
 </lcgdict>
 

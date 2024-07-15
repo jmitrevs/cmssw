@@ -10,9 +10,6 @@ namespace l1tp2 {
   private:
     // Data
     unsigned long long int clusterData;
-    unsigned int idxGCTCard;  // 0, 1, or 2
-    unsigned int idxGCTRegion; // 0, 1, 2, 3, 4, or 5
-    int etaSign; // +1 or -1
 
     // Constants
     static constexpr unsigned int n_towers_eta = 34;  // in GCT card unique region
@@ -23,12 +20,6 @@ namespace l1tp2 {
     static constexpr float LSB_ETA = ((2 * ETA_RANGE_ONE_SIDE) / (n_towers_eta * n_crystals_in_tower));  // (2.8 / 170)
     static constexpr float LSB_PHI = ((2 * M_PI) / (3 * n_towers_phi * n_crystals_in_tower));            // (2 pi * 360)
 
-    // "top" of the correlator card #0 in GCT coordinates is iPhi tower index 24
-    static constexpr int correlatorCard0_tower_iphi_offset = 24;
-    // same but for correlator cards #1 and 2 (cards wrap around phi = 180 degrees):
-    static constexpr int correlatorCard1_tower_iphi_offset = 48;
-    static constexpr int correlatorCard2_tower_iphi_offset = 0;
-
     // start of the unused bits 
     static constexpr int n_bits_unused_start = 52; 
 
@@ -38,9 +29,6 @@ namespace l1tp2 {
     GCTBarrelDigiClusterToCorrLayer1(ap_uint<64> data) { clusterData = data; }
 
     GCTBarrelDigiClusterToCorrLayer1(
-                               unsigned int iGCTCard,
-                               unsigned int iGCTRegion,
-                               int etaSign,
                                ap_uint<12> pt,
                                ap_uint<7> etaCr,
                                ap_uint<7> phiCr,
@@ -52,8 +40,6 @@ namespace l1tp2 {
                                ap_uint<5> timing,
                                ap_uint<2> shapeFlag,
                                ap_uint<2> brems) {
-      idxGCTCard = iGCTCard;
-      idxGCTRegion = iGCTRegion;
       clusterData = ((ap_uint<64>)pt) | (((ap_uint<64>)etaCr) << 12) | (((ap_uint<64>)phiCr) << 19) |
                     (((ap_uint<64>)hoe) << 26) | (((ap_uint<64>)hoeFlag) << 30) | (((ap_uint<64>)iso) << 35) |
                     (((ap_uint<64>)isoFlag) << 37) | (((ap_uint<64>)fb) << 43) | (((ap_uint<64>)timing) << 48) |
@@ -62,19 +48,16 @@ namespace l1tp2 {
 
     // Getters
     ap_uint<64> data() const { return clusterData; }
-    // which GCT card (0, 1, or 2)
-    unsigned int gctCard() const { return idxGCTCard; }
-    unsigned int gctRegion() const { return idxGCTRegion; }
 
     // Other getters
     float ptLSB() const { return LSB_PT; }
     ap_uint<12> pt() const { return (clusterData & 0xFFF); }
 
-    // crystal eta in the correlator region (LSB: 2.8/170)
-    ap_uint<7> eta() const { return ((clusterData >> 12) & 0xFF); }  // (eight 1's) 0b11111111 = 0xFF
+    // crystal eta (signed quantity)
+    int eta() const { return (int) ((clusterData >> 12) & 0x7F); }  // (seven 1's) 0b1111111 = 0x7F
 
-    // crystal phi in the correlator region (LSB: 2pi/360)
-    ap_uint<7> phi() const { return ((clusterData >> 19) & 0x7F); }  // (seven 1's) 0b1111111 = 0x7F
+    // crystal phi (signed quantity)
+    int phi() const { return (int) ((clusterData >> 19) & 0x7F); }  // (seven 1's) 0b1111111 = 0x7F
 
     // HoE value and flag: not defined yet in the emulator
     ap_uint<4> hoe() const { return ((clusterData >> 26) & 0xF); }      // (four 1's) 0b1111 = 0xF
@@ -129,7 +112,8 @@ namespace l1tp2 {
   };
 
   // Collection typedef
-  typedef std::vector<l1tp2::GCTBarrelDigiClusterToCorrLayer1> GCTBarrelDigiClustersToCorrLayer1Collection;
+  typedef std::vector<l1tp2::GCTBarrelDigiClusterToCorrLayer1> GCTBarrelDigiClusterToCorrLayer1Collection;
+  typedef std::vector<l1tp2::GCTBarrelDigiClusterToCorrLayer1Collection> GCTBarrelDigiClusterToCorrLayer1CollectionFullDetector;
 
 }  // namespace l1tp2
 
