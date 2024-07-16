@@ -8,17 +8,11 @@ namespace l1tp2 {
 
   class GCTBarrelDigiClusterToCorrLayer1 {
   private:
-    // Data
+    // Data (note: positional information is entirely encoded in the location in the output array)
     unsigned long long int clusterData;
 
     // Constants
-    static constexpr unsigned int n_towers_eta = 34;  // in GCT card unique region
-    static constexpr unsigned int n_towers_phi = 24;  // in GCT card unique region
-    static constexpr unsigned int n_crystals_in_tower = 5;
     static constexpr float LSB_PT = 0.5;                 // 0.5 GeV
-    static constexpr float ETA_RANGE_ONE_SIDE = 1.4841;  // barrel goes from (-1.4841, +1.4841)
-    static constexpr float LSB_ETA = ((2 * ETA_RANGE_ONE_SIDE) / (n_towers_eta * n_crystals_in_tower));  // (2.8 / 170)
-    static constexpr float LSB_PHI = ((2 * M_PI) / (3 * n_towers_phi * n_crystals_in_tower));            // (2 pi * 360)
 
     // start of the unused bits 
     static constexpr int n_bits_unused_start = 52; 
@@ -91,24 +85,6 @@ namespace l1tp2 {
     // Other checks
     bool passNullBitsCheck(void) const { return ((data() >> unusedBitsStart()) == 0x0); }
 
-    // // Get real eta (does not depend on card number). crystal iEta = 0 starts at real eta -1.4841.
-    // float realEta() const { return (float)((-1 * ETA_RANGE_ONE_SIDE) + (eta() * LSB_ETA)); }
-
-    // // Get real phi (uses card number).
-    // float realPhi() const {
-    //   // each card starts at a different real phi
-    //   int offset_tower = 0;
-    //   if (cardNumber() == 0) {
-    //     offset_tower = correlatorCard0_tower_iphi_offset;
-    //   } else if (cardNumber() == 1) {
-    //     offset_tower = correlatorCard1_tower_iphi_offset;
-    //   } else if (cardNumber() == 2) {
-    //     offset_tower = correlatorCard2_tower_iphi_offset;
-    //   }
-    //   int thisPhi = (phi() + (offset_tower * n_crystals_in_tower));
-    //   // crystal iPhi = 0 starts at real phi = -180 degrees
-    //   return (float)((-1 * M_PI) + (thisPhi * LSB_PHI));
-    // }
   };
 
   // Collection typedef
