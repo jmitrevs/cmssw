@@ -84,7 +84,6 @@ void Phase2GCTBarrelToCorrelatorLayer1::produce(edm::Event& iEvent, const edm::E
 
 
   // format digitized correlators in correct format
-  std::cout << "In the Phase2GCTBarrelToCorrelatorLayer1 produce method" << std::endl;
 
   // Loop over the regions: in order: GCT1 SLR1, GCT1 SLR3, GCT2 SLR1, GCT2 SLR3, GCT3 SLR1, GCT3SLR3
   int nRegions = 6;
@@ -100,22 +99,14 @@ void Phase2GCTBarrelToCorrelatorLayer1::produce(edm::Event& iEvent, const edm::E
       float regionLowerPhiBound = regionCentersInDegrees[i] - 60;
       float regionUpperPhiBound = regionCentersInDegrees[i] + 60;
       if ((clusterRealPhiAsDegree > regionLowerPhiBound) && (clusterRealPhiAsDegree < regionUpperPhiBound)) {
-        std::cout << "[INFO: In region: " << i << "]: "; 
-         std::cout << "Found digitized correlator Cluster with pT " << clusterIn.pt() * clusterIn.ptLSB()
-                   << " with iEta and iPhi " << clusterIn.eta() << ", " << clusterIn.phi()
-                  << " and real eta and phi " << clusterIn.realEta() << ", " << clusterIn.realPhi() 
-                  << " where I have converted the real phi to degrees as " << clusterRealPhiAsDegree << std::endl;
-
         // Go from real phi to an index in the SLR
         // Calculate the distance in phi from the center of the region
         float phiDifference = clusterRealPhiAsDegree - regionCentersInDegrees[i];
         int iPhiCrystalDifference = (int) std::round(phiDifference);
-        std::cout << " ... The distance from the region center is " << phiDifference << " which I have rounded to " << iPhiCrystalDifference << std::endl;
 
         // For eta, the eta is already digitized, just needs to be converted from [0, +2*17*5) to [-17*5, +17*5]
         int iEta = clusterIn.eta() - (p2eg::CRYSTALS_IN_TOWER_ETA * p2eg::n_towers_per_link);
 
-        std::cout << " ... The distance from the region center is " << iEta << " taken from an original cluster iEta " << clusterIn.eta() << std::endl;
 
         // Initialize the new cluster
         l1tp2::GCTBarrelDigiClusterToCorrLayer1 clusterOut = l1tp2::GCTBarrelDigiClusterToCorrLayer1(

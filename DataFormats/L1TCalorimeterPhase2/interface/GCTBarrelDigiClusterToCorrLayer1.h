@@ -34,7 +34,6 @@ namespace l1tp2 {
                                ap_uint<5> timing,
                                ap_uint<2> shapeFlag,
                                ap_uint<2> brems) {
-      std::cout << "... In constructor: etaCr and phiCr are " << etaCr << ", " << phiCr << std::endl;
       // iEta is a signed quantity, in bits 12 through 19 (8 bits). Bit 19 stores the sign of iEta (1 if iEta is positive, -1 if iEta is negative)
       // This leaves 7 bits for the magnitude (bits 12 through 18)
       ap_uint<64> temp_data_eta = 0x0; 
