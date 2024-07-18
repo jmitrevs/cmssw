@@ -82,6 +82,7 @@ void Phase2GCTBarrelToCorrelatorLayer1::produce(edm::Event& iEvent, const edm::E
   l1tp2::GCTBarrelDigiClusterToCorrLayer1Collection out_GCT3_SLR1;
   l1tp2::GCTBarrelDigiClusterToCorrLayer1Collection out_GCT3_SLR3;
 
+
   // format digitized correlators in correct format
   std::cout << "In the Phase2GCTBarrelToCorrelatorLayer1 produce method" << std::endl;
 
@@ -113,29 +114,37 @@ void Phase2GCTBarrelToCorrelatorLayer1::produce(edm::Event& iEvent, const edm::E
 
         // For eta, the eta is already digitized, just needs to be converted from [0, +2*17*5) to [-17*5, +17*5]
         int iEta = clusterIn.eta() - (p2eg::CRYSTALS_IN_TOWER_ETA * p2eg::n_towers_per_link);
+
         std::cout << " ... The distance from the region center is " << iEta << " taken from an original cluster iEta " << clusterIn.eta() << std::endl;
+
+        // Initialize the new cluster
+        l1tp2::GCTBarrelDigiClusterToCorrLayer1 clusterOut = l1tp2::GCTBarrelDigiClusterToCorrLayer1(
+          clusterIn.pt(),
+          iEta,
+          iPhiCrystalDifference,
+          clusterIn.hoe(),
+          clusterIn.hoeFlag(),
+          clusterIn.iso(),
+          clusterIn.isoFlags(),
+          clusterIn.fb(),
+          clusterIn.timing(),
+          clusterIn.shapeFlags(),
+          clusterIn.brems()
+        );
+
         
-        // Initialize the new cluster, TODO: set its properties 
-        l1tp2::GCTBarrelDigiClusterToCorrLayer1 clusterOut; 
         if (i == 0)      { out_GCT1_SLR1.push_back(clusterOut); }
         else if (i == 1) { out_GCT1_SLR3.push_back(clusterOut); }
         else if (i == 2) { out_GCT2_SLR1.push_back(clusterOut); }
         else if (i == 3) { out_GCT2_SLR3.push_back(clusterOut); }
         else if (i == 4) { out_GCT3_SLR1.push_back(clusterOut); }
         else if (i == 5) { out_GCT3_SLR3.push_back(clusterOut); }
-      
+
       }
     }
   }
 
-  // // Clusters sent out per region (overlaps included, i.e. any given cluster appears in two of the following six collections)
-  // iEvent.put(std::move(out_GCT1_SLR1), "GCTBarrelToCorrL1-GCT1-SLR1");
-  // iEvent.put(std::move(out_GCT1_SLR3), "GCTBarrelToCorrL1-GCT1-SLR3");
-  // iEvent.put(std::move(out_GCT2_SLR1), "GCTBarrelToCorrL1-GCT2-SLR1");
-  // iEvent.put(std::move(out_GCT2_SLR3), "GCTBarrelToCorrL1-GCT2-SLR3");
-  // iEvent.put(std::move(out_GCT3_SLR1), "GCTBarrelToCorrL1-GCT3-SLR1"); 
-  // iEvent.put(std::move(out_GCT3_SLR3), "GCTBarrelToCorrL1-GCT3-SLR3");
-
+  // Need to push these back in a specific order
   outputClustersFromBarrel->push_back(out_GCT1_SLR1);
   outputClustersFromBarrel->push_back(out_GCT1_SLR3);
   outputClustersFromBarrel->push_back(out_GCT2_SLR1);
