@@ -171,7 +171,7 @@ void Phase2GCTBarrelToCorrelatorLayer1::produce(edm::Event& iEvent, const edm::E
         // Go from real phi to an index in the SLR
         // Calculate the distance in phi from the center of the region
         float phiDifference = clusterRealPhiAsDegree - regionCentersInDegrees[i];
-        int iPhiCrystalDifference = (int) std::round(phiDifference);
+        int iPhiCrystalDifference = (int) phiDifference;  // round down
 
         // For PFClusters, the method clusterEta returns a float, so we need to digitize this
         float eta_LSB = p2eg::ECAL_eta_range / (p2eg::N_GCTTOWERS_FIBER * p2eg::CRYSTALS_IN_TOWER_ETA);
