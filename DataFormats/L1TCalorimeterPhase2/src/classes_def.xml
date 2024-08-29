@@ -60,5 +60,22 @@
   <class name="l1tp2::Phase2L1CaloJetCollection" />
   <class name="edm::Wrapper<l1tp2::Phase2L1CaloJetCollection>" />
 
+  <class name="l1tp2::GCTBarrelDigiClusterToCorrLayer1"/> 
+  <class name="std::vector<l1tp2::GCTBarrelDigiClusterToCorrLayer1>" />
+  <class name="l1tp2::GCTBarrelDigiClusterToCorrLayer1Collection" />
+  <class name="edm::Wrapper<l1tp2::GCTBarrelDigiClusterToCorrLayer1Collection>" />
+
+  <class name="l1tp2::GCTBarrelDigiClusterToCorrLayer1CollectionFullDetector"/> 
+  <class name="edm::Wrapper<l1tp2::GCTBarrelDigiClusterToCorrLayer1CollectionFullDetector>" />
+
+  <class name="l1tp2::CaloPFDigiClusterToCorrLayer1"/> 
+  <class name="std::vector<l1tp2::CaloPFDigiClusterToCorrLayer1>" />
+  <class name="l1tp2::CaloPFDigiClusterToCorrLayer1Collection" />
+  <class name="edm::Wrapper<l1tp2::CaloPFDigiClusterToCorrLayer1Collection>" />
+
+  <class name="l1tp2::CaloPFDigiClusterToCorrLayer1CollectionFullDetector"/> 
+  <class name="edm::Wrapper<l1tp2::CaloPFDigiClusterToCorrLayer1CollectionFullDetector>" />
+
+
 </lcgdict>
 
