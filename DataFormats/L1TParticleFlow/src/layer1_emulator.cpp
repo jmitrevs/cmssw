@@ -438,8 +438,8 @@ bool l1ct::Event::read(std::fstream& from) {
   if (version != VERSION) {
     //dbgCout() << "ERROR: version mismatch between this code (" << VERSION << ") and dump file (" << version << ")."
     //          << std::endl;
-    //dbgCerr() << "ERROR: version mismatch between this code (" << VERSION << ") and dump file (" << version << ")."
-    //          << std::endl;
+    std::cout << "ERROR: version mismatch between this code (" << VERSION << ") and dump file (" << version << ")."
+              << std::endl;
     abort();
   }
   return readVar(from, run) && readVar(from, lumi) && readVar(from, event) && raw.read(from) && decoded.read(from) &&
