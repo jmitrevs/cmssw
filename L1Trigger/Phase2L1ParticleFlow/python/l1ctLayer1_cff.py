@@ -98,12 +98,6 @@ l1tLayer1Barrel = cms.EDProducer("L1TCorrelatorLayer1Producer",
             phiSlices     = cms.uint32(3),
             phiExtra      = cms.double(math.pi/6),
             phiZero       = cms.double(math.pi/18)
-        ),
-        cms.PSet(
-            etaBoundaries = cms.vdouble(-1.5, 0, 1.5),
-            phiSlices     = cms.uint32(3),
-            phiExtra      = cms.double(math.pi/6),
-            phiZero       = cms.double(math.pi*7/18)
         )
     ),
     regions = cms.VPSet(
