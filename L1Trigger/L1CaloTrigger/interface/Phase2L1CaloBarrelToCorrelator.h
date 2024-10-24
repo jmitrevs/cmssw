@@ -21,7 +21,7 @@ void p2eg::sortAndPad_eg_SLR(l1tp2::GCTBarrelDigiClusterToCorrLayer1Collection &
     std::sort(thisSLR.begin(), thisSLR.end(), p2eg::compareBarrelDigiClusterCorrelatorET);
     int nClusters = thisSLR.size();
     std::cout << ">>> p2eg::sortAndPad_eg_SLR: Total entries in SLR: " << nClusters << std::endl;
-    // if fewer than designated number of clusters, pad with zeros
+    // If there are fewer than the designated number of clusters, pad with zeros
     if (nClusters < p2eg::N_EG_CLUSTERS_PER_SLR) {
         // do padding. if size == 2, push back four clusters
         for (int i = 0; i < (p2eg::N_EG_CLUSTERS_PER_SLR - nClusters); i++) {
@@ -29,8 +29,12 @@ void p2eg::sortAndPad_eg_SLR(l1tp2::GCTBarrelDigiClusterToCorrLayer1Collection &
             thisSLR.push_back(zeroCluster);
         }
     }
-    std::cout << ">>> p2eg::sortAndPad_eg_SLR: After push-back: Total entries in SLR: " << thisSLR.size() << std::endl;
-
+    // If there are more than the designated number of clusters, truncate the vector
+    else if (nClusters > p2eg::N_EG_CLUSTERS_PER_SLR) {
+        // Get the iterator to the sixth element and delete til the end of the vector
+        thisSLR.erase(thisSLR.begin() + p2eg::N_EG_CLUSTERS_PER_SLR, thisSLR.end());
+    }
+    std::cout << ">>> p2eg::sortAndPad_eg_SLR: After padding/truncation: Total entries in SLR: " << thisSLR.size() << std::endl;
 }
 
 /* 
@@ -41,22 +45,26 @@ inline bool p2eg::compareBarrelPFClustersET(const l1tp2::CaloPFDigiClusterToCorr
 }
 
 /*
- * Sort the clusters in each egamma SLR in descending pT, then pad any zero clusters so that the total number of clusters in the SLR is six
+ * Sort the clusters in each PF SLR in descending pT, then pad any zero clusters so that the total number of clusters in the SLR is six
  */
-void p2eg::sortAndPad_PF_SLR(l1tp2::CaloPFDigiClusterToCorrLayer1Collection &thisSLR) {
+void p2eg::sortAndPad_pf_SLR(l1tp2::CaloPFDigiClusterToCorrLayer1Collection &thisSLR) {
     // input is a vector and can be sorted
     std::sort(thisSLR.begin(), thisSLR.end(), p2eg::compareBarrelPFClustersET);
     int nClusters = thisSLR.size();
     std::cout << ">>> p2eg::sortAndPad_PF_SLR: Total entries in SLR: " << nClusters << std::endl;
-    // if fewer than designated number of clusters, pad with zeros
+    // If there are fewer than the designated number of clusters, pad with zeros
     if (nClusters < p2eg::N_PF_CLUSTERS_PER_SLR) {
-        // do padding. if size == 2, push back four clusters
         for (int i = 0; i < (p2eg::N_PF_CLUSTERS_PER_SLR - nClusters); i++) {
             l1tp2::CaloPFDigiClusterToCorrLayer1 zeroCluster;
             thisSLR.push_back(zeroCluster);
         }
     }
-    std::cout << ">>> p2eg::sortAndPad_PF_SLR: After push-back: Total entries in SLR: " << thisSLR.size() << std::endl;
+    // If there are more than the designated number of clusters, truncate the vector
+    else if (nClusters > p2eg::N_EG_CLUSTERS_PER_SLR) {
+        // Get the iterator to the sixth element and delete til the end of the vector
+        thisSLR.erase(thisSLR.begin() + p2eg::N_EG_CLUSTERS_PER_SLR, thisSLR.end());
+    }
+    std::cout << ">>> p2eg::sortAndPad_pf_SLR: After padding/truncation: Total entries in SLR: " << thisSLR.size() << std::endl;
 
 }
 
