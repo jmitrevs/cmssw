@@ -57,8 +57,8 @@ namespace l1tp2 {
     ap_uint<12> pt() const { return (clusterData & 0xFFF); }
     float ptFloat() const { return pt() * ptLSB(); }
 
-    // crystal eta (absolute value)
-    int eta() const { return ((clusterData >> 12) & 0xFF); }  
+    // crystal eta (absolute value, 7 bits)
+    int eta() const { return ((clusterData >> 12) & 0x7F); }  
 
     // crystal phi (signed quantity)
     int phi() const { 
@@ -103,6 +103,7 @@ namespace l1tp2 {
     // Other checks
     bool passNullBitsCheck(void) const { return ((data() >> unusedBitsStart()) == 0x0); }
 
+    // Note: not possible to get real eta and phi without knowing the link
   };
 
   // Collection typedef

@@ -49,8 +49,8 @@ namespace l1tp2 {
     ap_uint<12> pt() const { return (clusterData & 0xFFF); }
     float ptFloat() const { return pt() * ptLSB(); }
 
-    // crystal eta (unsigned quantity)
-    int eta() const { return ((clusterData >> 12) & 0xFF);  }
+    // crystal eta (unsigned quantity, 7 bits)
+    int eta() const { return ((clusterData >> 12) & 0x7F);  }
 
     // crystal phi (signed quantity)
     int phi() const { 
