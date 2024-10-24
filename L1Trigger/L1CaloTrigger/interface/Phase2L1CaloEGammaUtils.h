@@ -95,8 +95,9 @@ namespace p2eg {
 
   static constexpr int N_GCTTOWERS_CLUSTER_ISO_ONESIDE = 5;  // window size of isolation sum (5x5 in towers)
 
-  // Output to correlator: fixed number of EG clusters per output SLR
+  // Output to correlator: fixed number of EG and PF clusters per output SLR
   static constexpr int N_EG_CLUSTERS_PER_SLR = 6;
+  static constexpr int N_PF_CLUSTERS_PER_SLR = 6;
 
   //////////////////////////////////////////////////////////////////////////
   // RCT: indexing helper functions
@@ -1669,7 +1670,9 @@ namespace p2eg {
   /* Interface to correlator helper functions (defined in Phase2L1CaloBarrelToCorrelator.h)  */
   /*******************************************************************************************/
   bool compareBarrelDigiClusterCorrelatorET(const l1tp2::GCTBarrelDigiClusterToCorrLayer1& lhs, const l1tp2::GCTBarrelDigiClusterToCorrLayer1& rhs);
-  void sortAndPadSLR(l1tp2::GCTBarrelDigiClusterToCorrLayer1Collection& thisSLR);
+  void sortAndPad_eg_SLR(l1tp2::GCTBarrelDigiClusterToCorrLayer1Collection& thisSLR);
+  bool compareBarrelPFClustersET(const l1tp2::CaloPFDigiClusterToCorrLayer1& lhs, const l1tp2::CaloPFDigiClusterToCorrLayer1& rhs);
+  void sortAndPad_PF_SLR(l1tp2::CaloPFDigiClusterToCorrLayer1Collection &thisSLR);
 
 
 }  // namespace p2eg

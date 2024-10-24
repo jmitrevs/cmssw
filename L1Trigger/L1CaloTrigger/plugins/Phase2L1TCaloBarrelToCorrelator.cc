@@ -225,8 +225,19 @@ void Phase2GCTBarrelToCorrelatorLayer1::produce(edm::Event& iEvent, const edm::E
         }
     }
 
-    // TODO: Within each SLR, sort the egamma clusters in descending pT order and add zero-padding
-    p2eg::sortAndPadSLR(out_eg_GCT1_SLR1_posEta);
+    // Within each egamma SLR, sort the egamma clusters in descending pT order and add zero-padding
+    p2eg::sortAndPad_eg_SLR(out_eg_GCT1_SLR1_negEta);
+    p2eg::sortAndPad_eg_SLR(out_eg_GCT1_SLR3_negEta);
+    p2eg::sortAndPad_eg_SLR(out_eg_GCT2_SLR1_negEta);
+    p2eg::sortAndPad_eg_SLR(out_eg_GCT2_SLR3_negEta);
+    p2eg::sortAndPad_eg_SLR(out_eg_GCT3_SLR1_negEta);
+    p2eg::sortAndPad_eg_SLR(out_eg_GCT3_SLR3_negEta);
+    p2eg::sortAndPad_eg_SLR(out_eg_GCT1_SLR1_posEta);
+    p2eg::sortAndPad_eg_SLR(out_eg_GCT1_SLR3_posEta);
+    p2eg::sortAndPad_eg_SLR(out_eg_GCT2_SLR1_posEta);
+    p2eg::sortAndPad_eg_SLR(out_eg_GCT2_SLR3_posEta);
+    p2eg::sortAndPad_eg_SLR(out_eg_GCT3_SLR1_posEta);
+    p2eg::sortAndPad_eg_SLR(out_eg_GCT3_SLR3_posEta);
 
     // TODO: Within each SLR, sort the PF clusters in descending pT order and add zero-padding
 
