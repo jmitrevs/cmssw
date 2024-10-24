@@ -18,6 +18,7 @@
 // Output collections
 #include "DataFormats/L1TCalorimeterPhase2/interface/CaloCrystalCluster.h"
 #include "DataFormats/L1TCalorimeterPhase2/interface/CaloTower.h"
+#include "DataFormats/L1TCalorimeterPhase2/interface/CaloPFDigiClusterToCorrLayer1.h"
 #include "DataFormats/L1TCalorimeterPhase2/interface/DigitizedClusterCorrelator.h"
 #include "DataFormats/L1TCalorimeterPhase2/interface/DigitizedTowerCorrelator.h"
 #include "DataFormats/L1TCalorimeterPhase2/interface/DigitizedClusterGT.h"
@@ -96,8 +97,8 @@ namespace p2eg {
   static constexpr int N_GCTTOWERS_CLUSTER_ISO_ONESIDE = 5;  // window size of isolation sum (5x5 in towers)
 
   // Output to correlator: fixed number of EG and PF clusters per output SLR
-  static constexpr int N_EG_CLUSTERS_PER_SLR = 6;
-  static constexpr int N_PF_CLUSTERS_PER_SLR = 6;
+  static constexpr int N_EG_CLUSTERS_PER_SLR = 9;
+  static constexpr int N_PF_CLUSTERS_PER_SLR = 12;
 
   //////////////////////////////////////////////////////////////////////////
   // RCT: indexing helper functions
@@ -1672,7 +1673,7 @@ namespace p2eg {
   bool compareBarrelDigiClusterCorrelatorET(const l1tp2::GCTBarrelDigiClusterToCorrLayer1& lhs, const l1tp2::GCTBarrelDigiClusterToCorrLayer1& rhs);
   void sortAndPad_eg_SLR(l1tp2::GCTBarrelDigiClusterToCorrLayer1Collection& thisSLR);
   bool compareBarrelPFClustersET(const l1tp2::CaloPFDigiClusterToCorrLayer1& lhs, const l1tp2::CaloPFDigiClusterToCorrLayer1& rhs);
-  void sortAndPad_PF_SLR(l1tp2::CaloPFDigiClusterToCorrLayer1Collection &thisSLR);
+  void sortAndPad_pf_SLR(l1tp2::CaloPFDigiClusterToCorrLayer1Collection &thisSLR);
 
 
 }  // namespace p2eg
