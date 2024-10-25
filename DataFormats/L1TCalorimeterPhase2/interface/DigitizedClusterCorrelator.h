@@ -161,7 +161,8 @@ namespace l1tp2 {
     bool passNullBitsCheck(void) const { return ((data() >> unusedBitsStart()) == 0x0); }
 
     // Get real eta (does not depend on card number). crystal iEta = 0 starts at real eta -1.4841.
-    float realEta() const { return (float)((-1 * ETA_RANGE_ONE_SIDE) + (eta() * LSB_ETA)); }
+    // LSB_ETA/2 is to add half a crystal width to get the center of the crystal in eta
+    float realEta() const { return (float)((-1 * ETA_RANGE_ONE_SIDE) + (eta() * LSB_ETA) + (LSB_ETA/2)); }
 
     // Get real phi (uses card number).
     float realPhi() const {
@@ -176,7 +177,8 @@ namespace l1tp2 {
       }
       int thisPhi = (phi() + (offset_tower * n_crystals_in_tower));
       // crystal iPhi = 0 starts at real phi = -180 degrees
-      return (float)((-1 * M_PI) + (thisPhi * LSB_PHI));
+      // LSB_PHI/2 is to add half a crystal width to get the center of the crystal in phi
+      return (float)((-1 * M_PI) + (thisPhi * LSB_PHI) + (LSB_PHI/2));
     }
   };
 
