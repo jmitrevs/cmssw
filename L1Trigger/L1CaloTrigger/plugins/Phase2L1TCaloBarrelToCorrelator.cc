@@ -136,17 +136,16 @@ void Phase2GCTBarrelToCorrelatorLayer1::produce(edm::Event& iEvent, const edm::E
 
             l1tp2::GCTBarrelDigiClusterToCorrLayer1 clusterOut;
 
-            std::cout << ">>> This input DigitizedClusterCorrelator:" << clusterIn.pt() * clusterIn.ptLSB() << " GeV, at " << clusterIn.eta() << ", " << clusterIn.phi() << std::endl;
-
             // Check if this cluster falls into each card 
             float clusterRealPhiAsDegree = clusterIn.realPhi() * 180/M_PI; 
             float regionLowerPhiBound = regionCentersInDegrees[i] - 60;
             float regionUpperPhiBound = regionCentersInDegrees[i] + 60;
             if ((clusterRealPhiAsDegree > regionLowerPhiBound) && (clusterRealPhiAsDegree < regionUpperPhiBound)) {
                 // Go from real phi to an index in the SLR
-                // Calculate the distance in phi from the center of the region
+                // Calculate the distance in phi from the center of the region 
                 float phiDifference = clusterRealPhiAsDegree - regionCentersInDegrees[i];
-                int iPhiCrystalDifference = (int) std::round(phiDifference);
+                // The crystal directly above the region center in phi, is iPhi 0. The crystal directly below the region center in phi, is iPhi -1.
+                int iPhiCrystalDifference = std::floor(phiDifference);
 
                 // For eta, the eta is already digitized, just needs to be converted from [0, +2*17*5) to [-17*5, +17*5)
                 int temp_iEta_signed = clusterIn.eta() - (p2eg::CRYSTALS_IN_TOWER_ETA * p2eg::n_towers_per_link);
@@ -158,9 +157,6 @@ void Phase2GCTBarrelToCorrelatorLayer1::produce(edm::Event& iEvent, const edm::E
                     // If in negative eta, convert to an absolute value, with 0 being the crystal nearest real eta = 0
                     iEta = std::abs(temp_iEta_signed + 1);
                 }
-
-                std::cout << "...Phase2L1TCaloBarrelToCorrelator.cc: .. in nRegion " << i << ", clusterIn.phi() is " << clusterIn.phi() << " and with a phi center of " << regionCentersInDegrees[i] 
-                            << " float phiDifference is " << phiDifference << " giving a rounded iPhiCrystalDifference of " << iPhiCrystalDifference << std::endl;
 
                 // Initialize the new cluster
                 l1tp2::GCTBarrelDigiClusterToCorrLayer1 clusterOut = l1tp2::GCTBarrelDigiClusterToCorrLayer1(
@@ -191,8 +187,6 @@ void Phase2GCTBarrelToCorrelatorLayer1::produce(edm::Event& iEvent, const edm::E
             // Skip zero-energy clusters
             if (pfIn.clusterEt() == 0) continue; 
 
-            std::cout << ">>> This PF cluster: " << pfIn.clusterEt() << " at " << pfIn.clusterEta() << ", " << pfIn.clusterPhi() << std::endl;
-
             l1tp2::CaloPFDigiClusterToCorrLayer1 pfOut;
 
             // Check if this cluster falls into each card 
@@ -201,16 +195,14 @@ void Phase2GCTBarrelToCorrelatorLayer1::produce(edm::Event& iEvent, const edm::E
             float regionUpperPhiBound = regionCentersInDegrees[i] + 60;
             if ((clusterRealPhiAsDegree > regionLowerPhiBound) && (clusterRealPhiAsDegree < regionUpperPhiBound)) {
 
-                std::cout << ">>> ....... I think this goes in SLR " << i << std::endl;
-
                 // Go from real phi to an index in the SLR
                 // Calculate the distance in phi from the center of the region
                 float phiDifference = clusterRealPhiAsDegree - regionCentersInDegrees[i];
-                int iPhiCrystalDifference = (int) phiDifference;  // round down
+                int iPhiCrystalDifference = std::floor(phiDifference);  
 
                 // For PFClusters, the method clusterEta returns a float, so we need to digitize this
                 float eta_LSB = p2eg::ECAL_eta_range / (p2eg::N_GCTTOWERS_FIBER * p2eg::CRYSTALS_IN_TOWER_ETA);
-                int temp_iEta_signed = pfIn.clusterEta() / eta_LSB;
+                int temp_iEta_signed = std::floor(pfIn.clusterEta() / eta_LSB);
                 // Default value (for positive eta)
                 int iEta = temp_iEta_signed;
                 // If cluster is in negative eta, instead of from -5, -4, -3, -2, -1 we want 4, 3, 2, 1, 0
@@ -227,8 +219,6 @@ void Phase2GCTBarrelToCorrelatorLayer1::produce(edm::Event& iEvent, const edm::E
                     0  // no HoE value in PF Cluster
                 );
 
-                std::cout << ">>> Initialized pfOut as " << pfIn.clusterEt() / p2eg::ECAL_LSB << " at iEta and iPhi " << iEta << ", " << iPhiCrystalDifference << std::endl;
-                
                 if (i == 0)      { if (temp_iEta_signed < 0) { out_pf_GCT1_SLR1_negEta.push_back(pfOut); } else { out_pf_GCT1_SLR1_posEta.push_back(pfOut); }}
                 else if (i == 1) { if (temp_iEta_signed < 0) { out_pf_GCT1_SLR3_negEta.push_back(pfOut); } else { out_pf_GCT1_SLR3_posEta.push_back(pfOut); }}
                 else if (i == 2) { if (temp_iEta_signed < 0) { out_pf_GCT2_SLR1_negEta.push_back(pfOut); } else { out_pf_GCT2_SLR1_posEta.push_back(pfOut); }}
