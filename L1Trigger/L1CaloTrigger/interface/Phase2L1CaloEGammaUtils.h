@@ -96,9 +96,12 @@ namespace p2eg {
 
   static constexpr int N_GCTTOWERS_CLUSTER_ISO_ONESIDE = 5;  // window size of isolation sum (5x5 in towers)
 
-  // Output to correlator: fixed number of EG and PF clusters per output SLR
+  // Outputs to correlator
+  // Fixed number of EG and PF clusters per output SLR
   static constexpr int N_EG_CLUSTERS_PER_SLR = 9;
   static constexpr int N_PF_CLUSTERS_PER_SLR = 12;
+  // Height of one SLR region in phi in degrees
+  static constexpr float PHI_RANGE_PER_SLR_DEGREES = 120; 
 
   //////////////////////////////////////////////////////////////////////////
   // RCT: indexing helper functions
@@ -1674,7 +1677,8 @@ namespace p2eg {
   void sortAndPad_eg_SLR(l1tp2::GCTBarrelDigiClusterToCorrLayer1Collection& thisSLR);
   bool compareBarrelPFClustersET(const l1tp2::CaloPFDigiClusterToCorrLayer1& lhs, const l1tp2::CaloPFDigiClusterToCorrLayer1& rhs);
   void sortAndPad_pf_SLR(l1tp2::CaloPFDigiClusterToCorrLayer1Collection &thisSLR);
-
+  float deltaPhiInDegrees(float phi1, float phi2, const float c);
+  float wrappedPhiInDegrees(float phi);
 
 }  // namespace p2eg
 

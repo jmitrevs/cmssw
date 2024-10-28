@@ -118,6 +118,7 @@ namespace l1tp2 {
     // Other getters
     float ptLSB() const { return LSB_PT; }
     ap_uint<12> pt() const { return (clusterData & 0xFFF); }
+    float ptFloat() const { return (pt() * ptLSB()); }
 
     // crystal eta in the correlator region (LSB: 2.8/170)
     ap_uint<8> eta() const { return ((clusterData >> 12) & 0xFF); }  // (eight 1's) 0b11111111 = 0xFF
