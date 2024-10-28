@@ -136,14 +136,11 @@ void Phase2GCTBarrelToCorrelatorLayer1::produce(edm::Event& iEvent, const edm::E
 
             l1tp2::GCTBarrelDigiClusterToCorrLayer1 clusterOut;
 
-            // Check if this cluster falls into each card 
+            // Check if this cluster falls into each SLR region, i.e. if the cluster is within 120/2 = 60 degrees of the center of the SLR in phi 
             float clusterRealPhiAsDegree = clusterIn.realPhi() * 180/M_PI; 
-            float regionLowerPhiBound = regionCentersInDegrees[i] - 60;
-            float regionUpperPhiBound = regionCentersInDegrees[i] + 60;
-            if ((clusterRealPhiAsDegree > regionLowerPhiBound) && (clusterRealPhiAsDegree < regionUpperPhiBound)) {
+            float phiDifference = p2eg::deltaPhiInDegrees(clusterRealPhiAsDegree, regionCentersInDegrees[i]);
+            if ( std::abs(phiDifference) < (p2eg::PHI_RANGE_PER_SLR_DEGREES/2) ) {
                 // Go from real phi to an index in the SLR
-                // Calculate the distance in phi from the center of the region 
-                float phiDifference = clusterRealPhiAsDegree - regionCentersInDegrees[i];
                 // The crystal directly above the region center in phi, is iPhi 0. The crystal directly below the region center in phi, is iPhi -1.
                 int iPhiCrystalDifference = std::floor(phiDifference);
 
@@ -190,11 +187,9 @@ void Phase2GCTBarrelToCorrelatorLayer1::produce(edm::Event& iEvent, const edm::E
             l1tp2::CaloPFDigiClusterToCorrLayer1 pfOut;
 
             // Check if this cluster falls into each card 
-            float clusterRealPhiAsDegree = pfIn.clusterPhi() * 180/M_PI; 
-            float regionLowerPhiBound = regionCentersInDegrees[i] - 60;
-            float regionUpperPhiBound = regionCentersInDegrees[i] + 60;
-            if ((clusterRealPhiAsDegree > regionLowerPhiBound) && (clusterRealPhiAsDegree < regionUpperPhiBound)) {
-
+            float clusterRealPhiAsDegree =  pfIn.clusterPhi() * 180/M_PI; 
+            float differenceInPhi = p2eg::deltaPhiInDegrees(clusterRealPhiAsDegree, regionCentersInDegrees[i]);
+            if ( std::abs(differenceInPhi) < (p2eg::PHI_RANGE_PER_SLR_DEGREES/2) ) {
                 // Go from real phi to an index in the SLR
                 // Calculate the distance in phi from the center of the region
                 float phiDifference = clusterRealPhiAsDegree - regionCentersInDegrees[i];
