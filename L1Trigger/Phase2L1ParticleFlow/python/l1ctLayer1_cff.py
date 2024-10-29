@@ -12,6 +12,7 @@ from L1Trigger.Phase2L1ParticleFlow.l1TkEgAlgoEmulator_cfi import tkEgAlgoParame
 l1tLayer1Barrel = cms.EDProducer("L1TCorrelatorLayer1Producer",
     tracks = cms.InputTag('l1tPFTracksFromL1Tracks'),
     muons = cms.InputTag('l1tSAMuonsGmt','prompt'),
+    # TODO: do I switch the two following ones? these need to be l1t::PFClusterCollection. Or do I add new inputs
     emClusters = cms.VInputTag(cms.InputTag('l1tPFClustersFromL1EGClusters:selected')),
     hadClusters = cms.VInputTag(cms.InputTag('l1tPFClustersFromCombinedCaloHCal:calibrated')),
     vtxCollection = cms.InputTag("l1tVertexFinderEmulator","L1VerticesEmulation"),
@@ -94,10 +95,10 @@ l1tLayer1Barrel = cms.EDProducer("L1TCorrelatorLayer1Producer",
     ),
     caloSectors = cms.VPSet(
         cms.PSet( 
-            etaBoundaries = cms.vdouble(-1.5, 1.5),
-            phiSlices     = cms.uint32(6),
-            phiExtra      = cms.double(math.pi/6),
-            phiZero       = cms.double(math.pi/18)
+            etaBoundaries = cms.vdouble(-1.5, 1.5), 
+            phiSlices     = cms.uint32(3),          # barrel is divided into three GCTs in phi
+            phiExtra      = cms.double(math.pi/6),  # size of the overlap shared between SLRs
+            phiZero       = cms.double(math.pi/18)  # the 0th SLR (first SLR) is centered at +10 degrees
         )
     ),
     regions = cms.VPSet(
