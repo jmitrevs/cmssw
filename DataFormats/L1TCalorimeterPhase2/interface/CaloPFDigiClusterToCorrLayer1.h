@@ -18,7 +18,7 @@ namespace l1tp2 {
     static constexpr int n_bits_unused_start = 31; 
 
   public:
-    CaloPFDigiClusterToCorrLayer1() { clusterData = 0x0; }
+    CaloPFDigiClusterToCorrLayer1() { clusterData = 0; }
 
     CaloPFDigiClusterToCorrLayer1(ap_uint<64> data) { clusterData = data; }
 
@@ -28,17 +28,17 @@ namespace l1tp2 {
                                int etaCr,
                                int phiCr,
                                ap_uint<4> hoe) {
-      // iEta is an unsigned quantity, in bits 12 through 18 (7 bits)
-      ap_uint<64> temp_data_eta = 0x0; 
-      temp_data_eta |= ((ap_uint<64>) ((0x7F & abs(etaCr)) << 12));  
+      // To use .range() we need an ap class member
+      ap_uint<64> temp_data; 
+      
+      ap_uint<7> etaCrDigitized = abs(etaCr);
+      ap_int<7> phiCrDigitized = phiCr;
 
-      // Repeat for phi, which is bits 20 through 26 (7 bits). The sign bit is 26, leaving 6 bits for the magnitude
-      ap_uint<64> temp_data_phi = 0x0;
-      if (phiCr > 0) temp_data_phi |= ((ap_uint<64>) (0x1 << 25));   // set bit 26 to 1 if iPhi is positive 
-      temp_data_phi |= ((ap_uint<64>) ((0x3F & abs(phiCr)) << 19));   // 0x3F is 0b111111 (six 1's)
+      temp_data.range(11, 0) = pt.range();
+      temp_data.range(18, 12) = etaCrDigitized.range();
+      temp_data.range(25, 19) = phiCrDigitized.range();
 
-      clusterData = ((ap_uint<64>)pt) | temp_data_eta | temp_data_phi |
-                    (((ap_uint<64>)hoe) << 26);
+      clusterData = temp_data;
     }
 
     // Getters
@@ -46,29 +46,21 @@ namespace l1tp2 {
 
     // Other getters
     float ptLSB() const { return LSB_PT; }
-    ap_uint<12> pt() const { return (clusterData & 0xFFF); }
+    ap_uint<12> pt() const { return data().range(11, 0); }
     float ptFloat() const { return pt() * ptLSB(); }
 
-    // crystal eta (unsigned quantity, 7 bits)
-    int eta() const { return ((clusterData >> 12) & 0x7F);  }
+    // crystal eta (unsigned 7 bits)
+    int eta() const { return (ap_uint<7>) data().range(18, 12); }
 
-    // crystal phi (signed quantity)
-    int phi() const { 
-      int signed_val; 
-      // get the sign bit (the 26th bit). If it is 1, phi is positive. If it is 0, phi is negative
-      // Magnitude is bits 20 through 25
-      if (clusterData & (0b1 << 25)) signed_val = ((clusterData >> 19) & 0x3F);  // 0x3F is six 1's
-      else signed_val = - ((clusterData >> 19) & 0x3F); 
+    // crystal phi (signed 7 bits)
+    int phi() const { return (ap_int<7>) data().range(25, 19); }
 
-      return signed_val;
-    }  
+    // HoE value 
+    ap_uint<4> hoe() const { return data().range(30, 26); }   
 
-    // HoE value and flag: not defined yet in the emulator
-    ap_uint<4> hoe() const { return ((clusterData >> 26) & 0xF); }      // (four 1's) 0b1111 = 0xF
+    // Check that unused bits are zero
     const int unusedBitsStart() const { return n_bits_unused_start; }
-
-    // Other checks
-    bool passNullBitsCheck(void) const { return ((data() >> unusedBitsStart()) == 0x0); }
+    bool passNullBitsCheck(void) const { return ((data() >> unusedBitsStart()) == 0); }
 
   };
 
