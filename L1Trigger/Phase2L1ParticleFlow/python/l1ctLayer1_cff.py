@@ -120,7 +120,6 @@ l1tLayer1Barrel = cms.EDProducer("L1TCorrelatorLayer1Producer",
         cms.PSet(
               regions = cms.vuint32(*[6+9*ie+i for ie in range(6) for i in range(3)])), # phi splitting
     )
-    writeRawGCTCluster = cms.untracked.bool(True)
 )
 
 l1tLayer1BarrelExtended = l1tLayer1Barrel.clone(tracks = cms.InputTag('l1tPFTracksFromL1TracksExtended'))
