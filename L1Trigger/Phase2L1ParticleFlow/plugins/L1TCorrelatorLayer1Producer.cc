@@ -142,6 +142,8 @@ private:
   // add objects in already-decoded format
   void addDecodedTrack(l1ct::DetectorSector<l1ct::TkObjEmu> &sec, const l1t::PFTrack &t);
   void addDecodedMuon(l1ct::DetectorSector<l1ct::MuObjEmu> &sec, const l1t::SAMuon &t);
+  void addDecodedGCTEmCalo(l1ct::DetectorSector<l1ct::EmCaloObjEmu> &sec, const ap_uint<64> &t);
+  void addDecodedGCTHadCalo(l1ct::DetectorSector<l1ct::HadCaloObjEmu> &sec, const ap_uint<64> &t);
   void addDecodedHadCalo(l1ct::DetectorSector<l1ct::HadCaloObjEmu> &sec, const l1t::PFCluster &t);
   void addDecodedEmCalo(l1ct::DetectorSector<l1ct::EmCaloObjEmu> &sec, const l1t::PFCluster &t);
 
@@ -431,6 +433,8 @@ void L1TCorrelatorLayer1Producer::fillDescriptions(edm::ConfigurationDescription
   desc.add<edm::InputTag>("muons", edm::InputTag("l1tSAMuonsGmt", "prompt"));
   desc.add<std::vector<edm::InputTag>>("emClusters", std::vector<edm::InputTag>());
   desc.add<std::vector<edm::InputTag>>("hadClusters", std::vector<edm::InputTag>());
+  desc.add<std::vector<edm::InputTag>>("emRawClusters", std::vector<edm::InputTag>());
+  desc.add<std::vector<edm::InputTag>>("hadRawClusters", std::vector<edm::InputTag>());
   desc.add<edm::InputTag>("vtxCollection", edm::InputTag("l1tVertexFinderEmulator", "L1VerticesEmulation"));
   desc.add<bool>("vtxCollectionEmulation", true);
   desc.add<double>("emPtCut", 0.0);
@@ -448,10 +452,10 @@ void L1TCorrelatorLayer1Producer::fillDescriptions(edm::ConfigurationDescription
       "Ideal" >> emptyGroup or "Emulator" >> getParDesc<l1ct::HgcalClusterDecoderEmulator>("hgcalInputConversion"));
   desc.ifValue(
       edm::ParameterDescription<std::string>("gctEmInputConversionAlgo", "Ideal", true),
-      "Ideal" >> emptyGroup or "Emulator" >> getParDesc<l1ct::GctEmClusterDecoderEmulator>("gcdEmInputConversion"));
+      "Ideal" >> emptyGroup or "Emulator" >> getParDesc<l1ct::GctEmClusterDecoderEmulator>("gctEmInputConversion"));
   desc.ifValue(
       edm::ParameterDescription<std::string>("gctHadInputConversionAlgo", "Ideal", true),
-      "Ideal" >> emptyGroup or "Emulator" >> getParDesc<l1ct::GctHadClusterDecoderEmulator>("gcdHadInputConversion"));
+      "Ideal" >> emptyGroup or "Emulator" >> getParDesc<l1ct::GctHadClusterDecoderEmulator>("gctHadInputConversion"));
   // Regionizer
   auto idealRegPD = getParDesc<l1ct::RegionizerEmulator>("regionizerAlgo");
   auto tdrRegPD = getParDesc<l1ct::TDRRegionizerEmulator>("regionizerAlgo");
@@ -894,10 +898,14 @@ void L1TCorrelatorLayer1Producer::addEmCalo(const l1t::PFCluster &c, l1t::PFClus
 
 void L1TCorrelatorLayer1Producer::addEmCaloRaw(const rawEMClusterCollection &calo, unsigned int colidx, unsigned int entidx) {
   event_.raw.gctEm[calomapping[colidx]].obj.push_back(calo[entidx].data());
+  addDecodedGCTEmCalo(event_.decoded.emcalo[calomapping[colidx]], calo[entidx].data());
+  // for the moment, not setting a ref map
 }
 
 void L1TCorrelatorLayer1Producer::addHadCaloRaw(const rawHadClusterCollection &calo, unsigned int colidx, unsigned int entidx) {
   event_.raw.gctHad[calomapping[colidx]].obj.push_back(calo[entidx].data());
+  addDecodedGCTHadCalo(event_.decoded.hadcalo[calomapping[colidx]], calo[entidx].data());
+  // for the moment, not setting a ref map
 }
 
 void L1TCorrelatorLayer1Producer::addDecodedTrack(l1ct::DetectorSector<l1ct::TkObjEmu> &sec, const l1t::PFTrack &t) {
@@ -955,6 +963,24 @@ void L1TCorrelatorLayer1Producer::addDecodedMuon(l1ct::DetectorSector<l1ct::MuOb
   sec.obj.push_back(mu);
 }
 
+void L1TCorrelatorLayer1Producer::addDecodedGCTEmCalo(l1ct::DetectorSector<l1ct::EmCaloObjEmu> &sec, const ap_uint<64> &t) {
+  l1ct::EmCaloObjEmu calo;
+  if (gctEmInput_) {
+    calo = gctEmInput_->decode(t);
+  }
+  // not setting the src, but note that the indices should match of the source
+  sec.obj.push_back(calo);
+}
+
+void L1TCorrelatorLayer1Producer::addDecodedGCTHadCalo(l1ct::DetectorSector<l1ct::HadCaloObjEmu> &sec, const ap_uint<64> &t) {
+  l1ct::HadCaloObjEmu calo;
+  if (gctHadInput_) {
+    calo = gctHadInput_->decode(t);
+  }
+  // not setting the src, but note that the indices should match of the source
+  sec.obj.push_back(calo);
+}
+
 void L1TCorrelatorLayer1Producer::addDecodedHadCalo(l1ct::DetectorSector<l1ct::HadCaloObjEmu> &sec,
                                                     const l1t::PFCluster &c) {
   l1ct::HadCaloObjEmu calo;
@@ -962,8 +988,6 @@ void L1TCorrelatorLayer1Producer::addDecodedHadCalo(l1ct::DetectorSector<l1ct::H
     ap_uint<256> word = 0;
     rawHgcalClusterEncode(word, sec, c);
     calo = hgcalInput_->decode(word);
-  } else if (gctHadInput_) {
-    ap_uint<64> word = 0;
   } else {
     calo.hwPt = l1ct::Scales::makePtFromFloat(c.pt());
     calo.hwEta = l1ct::Scales::makeGlbEta(c.eta()) -
