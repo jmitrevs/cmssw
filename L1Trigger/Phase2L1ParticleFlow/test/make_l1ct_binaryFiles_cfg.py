@@ -96,10 +96,6 @@ process.l1tLayer1BarrelTDR.regionizerAlgoParameters = cms.PSet(
         doSort = cms.bool(False),
         bigRegionEdges = cms.vint32(-560, -80, 400, -560)
     )
-process.l1tLayer1BarrelTDR.emPtCut = cms.double(-100.0),  # don't apply
-process.l1tLayer1BarrelTDR.hadPtCut = cms.double(-100.0),  # don't apply
-process.l1tLayer1BarrelTDR.gctEmInputConversionAlgo = cms.string("Emulator")
-process.l1tLayer1BarrelTDR.gctEmInputConversionAlgo = cms.string("Emulator")
 process.l1tLayer1BarrelTDR.pfAlgoParameters.nTrack = 22
 process.l1tLayer1BarrelTDR.pfAlgoParameters.nSelCalo = 15
 process.l1tLayer1BarrelTDR.pfAlgoParameters.nCalo = 15
@@ -111,18 +107,6 @@ process.l1tLayer1BarrelTDR.puAlgoParameters.finalSortAlgo = "BitonicVHDL"
 process.l1tLayer1BarrelTDR.tkEgAlgoParameters.nTRACK_EGIN = 22
 process.l1tLayer1BarrelTDR.tkEgAlgoParameters.nEMCALO_EGIN = 12
 
-process.l1tLayer1BarrelTDR.caloSectors = cms.VPSet(
-        cms.PSet(
-            etaBoundaries = cms.vdouble(-1.5, 0, 1.5),
-            phiSlices     = cms.uint32(3),
-            phiZero       = cms.double(math.pi/18)
-        ),
-        cms.PSet(
-            etaBoundaries = cms.vdouble(-1.5, 0, 1.5),
-            phiSlices     = cms.uint32(3),
-            phiZero       = cms.double(math.pi*7/18)
-        )
-    )
 
 process.l1tLayer1BarrelSerenity = process.l1tLayer1Barrel.clone()
 process.l1tLayer1BarrelSerenity.regionizerAlgo = "MultififoBarrel"
@@ -245,4 +229,4 @@ if args.tm18:
                 getattr(process, 'l1tLayer1'+det).dumpFileName = cms.untracked.string("TTbar_PU200_"+det+".dump")
 
 process.source.fileNames  = [ '/store/cmst3/group/l1tr/cerminar/14_0_X/fpinputs_131X/v3/TTbar_PU200/inputs131X_1.root' ]
-
+process.source.fileNames = ["file:inputs131X_1.root"]
