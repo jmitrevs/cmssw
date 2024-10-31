@@ -875,8 +875,6 @@ void L1TCorrelatorLayer1Producer::addHadCalo(const l1t::PFCluster &c, l1t::PFClu
       addDecodedHadCalo(sec, c);
       if (writeRawHgcalCluster_)
         addRawHgcalCluster(event_.raw.hgcalcluster[sidx], c);
-      // if (writeRawGCTCluster_)
-      //   addGCTHadCluster(event_.raw.gctHad[sidx], c);
     }
     sidx++;
   }
