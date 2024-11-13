@@ -20,7 +20,7 @@ double l1ct::GctHadClusterDecoderEmulator::fracPart(const double total, const un
 
 l1ct::HadCaloObjEmu l1ct::GctHadClusterDecoderEmulator::decode(const ap_uint<64> &in) const {
   ap_uint<12> pt = in(11, 0);
-  ap_int<7> eta = in(18, 12);  
+  ap_int<7> eta = in(18, 12);
   ap_int<7> phi = in(25, 19);
 
   l1ct::HadCaloObjEmu out;
@@ -44,6 +44,8 @@ l1ct::HadCaloObjEmu l1ct::GctHadClusterDecoderEmulator::decode(const ap_uint<64>
     out.hwEmPt = out.hwPt - had;
   }
 
+  // need to add emid
+  out.hwEmID = 1;
 
   return out;
 }
