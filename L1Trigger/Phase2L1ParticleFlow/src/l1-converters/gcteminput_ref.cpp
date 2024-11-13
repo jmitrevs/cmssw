@@ -27,6 +27,7 @@ l1ct::EmCaloObjEmu l1ct::GctEmClusterDecoderEmulator::decode(const ap_uint<64> &
   out.hwPhi = phi * 4;
 
   // need to add emid
+  out.hwEmID = 1;
 
   return out;
 }

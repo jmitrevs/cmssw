@@ -285,20 +285,6 @@ L1TCorrelatorLayer1Producer::L1TCorrelatorLayer1Producer(const edm::ParameterSet
 #endif
   produces<std::vector<l1t::PFTrack>>("DecodedTK");
 
-  for (const auto &tag : iConfig.getParameter<std::vector<edm::InputTag>>("emClusters")) {
-    emCands_.push_back(consumes<l1t::PFClusterCollection>(tag));
-  }
-  for (const auto &tag : iConfig.getParameter<std::vector<edm::InputTag>>("hadClusters")) {
-    hadCands_.push_back(consumes<l1t::PFClusterCollection>(tag));
-  }
-
-  for (const auto &tag : iConfig.getParameter<std::vector<edm::InputTag>>("emRawClusters")) {
-    emRawCands_.push_back(consumes<rawEMClusterCollections>(tag));
-  }
-  for (const auto &tag : iConfig.getParameter<std::vector<edm::InputTag>>("hadRawClusters")) {
-    hadRawCands_.push_back(consumes<rawHadClusterCollections>(tag));
-  }
-
   if (hasTracks_) {
     const std::string &tkInAlgo = iConfig.getParameter<std::string>("trackInputConversionAlgo");
     if (tkInAlgo == "Emulator") {
@@ -326,15 +312,31 @@ L1TCorrelatorLayer1Producer::L1TCorrelatorLayer1Producer(const edm::ParameterSet
   if (gctEmInAlgo == "Emulator") {
     gctEmInput_ = std::make_unique<l1ct::GctEmClusterDecoderEmulator>(
         iConfig.getParameter<edm::ParameterSet>("gctEmInputConversionParameters"));
-  } else if (gctEmInAlgo != "Ideal")
+    for (const auto &tag : iConfig.getParameter<std::vector<edm::InputTag>>("emClusters")) {
+      emRawCands_.push_back(consumes<rawEMClusterCollections>(tag));
+    }
+  } else if (gctEmInAlgo == "Ideal") {
+    for (const auto &tag : iConfig.getParameter<std::vector<edm::InputTag>>("emClusters")) {
+      emCands_.push_back(consumes<l1t::PFClusterCollection>(tag));
+    }
+  } else {
     throw cms::Exception("Configuration", "Unsupported gctEmInputConversionAlgo");
+  }
 
   const std::string &gctHadInAlgo = iConfig.getParameter<std::string>("gctHadInputConversionAlgo");
   if (gctHadInAlgo == "Emulator") {
     gctHadInput_ = std::make_unique<l1ct::GctHadClusterDecoderEmulator>(
         iConfig.getParameter<edm::ParameterSet>("gctHadInputConversionParameters"));
-  } else if (gctHadInAlgo != "Ideal")
+    for (const auto &tag : iConfig.getParameter<std::vector<edm::InputTag>>("hadClusters")) {
+      hadRawCands_.push_back(consumes<rawHadClusterCollections>(tag));
+    }
+  } else if (gctHadInAlgo == "Ideal") {
+    for (const auto &tag : iConfig.getParameter<std::vector<edm::InputTag>>("hadClusters")) {
+      hadCands_.push_back(consumes<l1t::PFClusterCollection>(tag));
+    }
+  } else {
     throw cms::Exception("Configuration", "Unsupported gctHadInputConversionAlgo");
+  }
 
   const std::string &regalgo = iConfig.getParameter<std::string>("regionizerAlgo");
   if (regalgo == "Ideal") {
@@ -433,8 +435,6 @@ void L1TCorrelatorLayer1Producer::fillDescriptions(edm::ConfigurationDescription
   desc.add<edm::InputTag>("muons", edm::InputTag("l1tSAMuonsGmt", "prompt"));
   desc.add<std::vector<edm::InputTag>>("emClusters", std::vector<edm::InputTag>());
   desc.add<std::vector<edm::InputTag>>("hadClusters", std::vector<edm::InputTag>());
-  desc.add<std::vector<edm::InputTag>>("emRawClusters", std::vector<edm::InputTag>());
-  desc.add<std::vector<edm::InputTag>>("hadRawClusters", std::vector<edm::InputTag>());
   desc.add<edm::InputTag>("vtxCollection", edm::InputTag("l1tVertexFinderEmulator", "L1VerticesEmulation"));
   desc.add<bool>("vtxCollectionEmulation", true);
   desc.add<double>("emPtCut", 0.0);
@@ -607,7 +607,7 @@ void L1TCorrelatorLayer1Producer::produce(edm::Event &iEvent, const edm::EventSe
     }
   }
 
-  // this is for parsing raw calo infirmatoin
+  // this is for parsing raw calo information
   for (const auto &tag : emRawCands_) {
     auto caloHandle = iEvent.getHandle(tag);
     const auto &calos = *caloHandle;
@@ -1319,7 +1319,7 @@ void L1TCorrelatorLayer1Producer::putEgObjects(edm::Event &iEvent,
       reco::Candidate::PolarLorentzVector mom(egiso.floatPt(), egiso.floatEta(), egiso.floatPhi(), 0.);
 
       l1t::TkEm tkem(reco::Candidate::LorentzVector(mom),
-                     egiso.srcCluster->constituentsAndFractions()[0].first,
+                     egiso.srcCluster ? egiso.srcCluster->constituentsAndFractions()[0].first : edm::Ptr<l1t::L1Candidate>(),
                      egiso.floatRelIso(l1ct::EGIsoObjEmu::IsoType::TkIso),
                      egiso.floatRelIso(l1ct::EGIsoObjEmu::IsoType::TkIsoPV));
       tkem.setHwQual(egiso.hwQual);
@@ -1339,7 +1339,7 @@ void L1TCorrelatorLayer1Producer::putEgObjects(edm::Event &iEvent,
       reco::Candidate::PolarLorentzVector mom(egele.floatPt(), egele.floatVtxEta(), egele.floatVtxPhi(), 0.);
 
       l1t::TkElectron tkele(reco::Candidate::LorentzVector(mom),
-                            egele.srcCluster->constituentsAndFractions()[0].first,
+                            egele.srcCluster ? egele.srcCluster->constituentsAndFractions()[0].first : edm::Ptr<l1t::L1Candidate>(),
                             edm::refToPtr(egele.srcTrack->track()),
                             egele.floatRelIso(l1ct::EGIsoEleObjEmu::IsoType::TkIso));
       tkele.setHwQual(egele.hwQual);
