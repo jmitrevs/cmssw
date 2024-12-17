@@ -187,13 +187,12 @@ void l1ct::tdr_regionizer::Regionizer<T>::initSectors(const std::vector<Detector
   // }
 
   std::sort(invsectormap_.begin(), invsectormap_.end(), [this](size_t a, size_t b) { return this->sortSectors(a, b); });
-  // if (debug_) {
-  //   for (auto val : invsectormap_) {
-  //     dbgCout() << "invsectormap value = " << val << ", eta = " <<  sectors_[val].intEtaCenter()
-  //       << ", phi = " <<  sectors_[val].intPhiCenter()<<  std::endl;
-  //   }
-  // }
-
+  if (debug_) {
+    for (auto val : invsectormap_) {
+      dbgCout() << "invsectormap value = " << val << ", eta = " <<  sectors_[val].intEtaCenter()
+        << ", phi = " <<  sectors_[val].intPhiCenter()<<  std::endl;
+    }
+  }
 
 
   // now invert the invsectormap_
@@ -295,7 +294,7 @@ void l1ct::tdr_regionizer::Regionizer<T>::initRegions(const std::vector<PFInputR
     if (isInBigRegion(regions_[i])) {
       regionmap_.push_back(i);
         if (debug_) {
-          dbgCout() << "region eta/phi: " << regions_[i].intEtaCenter() << " " << regions_[i].intPhiCenter()
+          dbgCout() << "region [" << i << "] eta/phi: " << regions_[i].intEtaCenter() << " " << regions_[i].intPhiCenter()
                 << ", eta half width = " << regions_[i].hwEtaHalfWidth.to_int()
                 << ", phi half width = " << regions_[i].hwPhiHalfWidth.to_int()
                 << ", eta extra = " << regions_[i].hwEtaExtra.to_int()
@@ -469,6 +468,9 @@ void l1ct::tdr_regionizer::Regionizer<T>::run() {
         if (nextSR < 0 || buffer.pt() == 0 || smallRegionObjects_[nextSR].size() == maxobjects_
             || isDuplicate(buffer.sectorLocalPhi(), logicBuffIndex(bufIdx))) {
           // throwout or SR full, just get rid of object
+          if (debug_) {
+            dbgCout() << "---Throw out" << std::endl;
+          }
           buffer.popEntry(currTime, debug_);
         } else {
           const auto logicBufIdx = logicBuffIndex(bufIdx);
@@ -549,7 +551,7 @@ template <>
 bool l1ct::tdr_regionizer::Regionizer<l1ct::HadCaloObjEmu>::isDuplicate(int locphi, size_t logicBufIdx) const {
   auto odd = logicBufIdx % 2;
   if (odd) {
-    return locphi <= 120;
+    return locphi <= -120;
   } else {
     return locphi > 120;
   }
@@ -559,7 +561,7 @@ template <>
 bool l1ct::tdr_regionizer::Regionizer<l1ct::EmCaloObjEmu>::isDuplicate(int locphi, size_t logicBufIdx) const {
   auto odd = logicBufIdx % 2;
   if (odd) {
-    return locphi <= 120;
+    return locphi <= -120;
   } else {
     return locphi > 120;
   }
