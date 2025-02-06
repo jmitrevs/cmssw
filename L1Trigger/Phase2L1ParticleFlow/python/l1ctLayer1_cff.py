@@ -11,9 +11,8 @@ from L1Trigger.Phase2L1ParticleFlow.l1TkEgAlgoEmulator_cfi import tkEgAlgoParame
 l1tLayer1Barrel = cms.EDProducer("L1TCorrelatorLayer1Producer",
     tracks = cms.InputTag('l1tPFTracksFromL1Tracks'),
     muons = cms.InputTag('l1tSAMuonsGmt','prompt'),
-    emGctClusters = cms.InputTag("l1tPhase2L1CaloEGammaEmulator","GCTClusters"),
-    emGctRawClusters = cms.InputTag("l1tPhase2L1CaloEGammaEmulator","GCTDigitizedClusterToCorrelator"),
-    hadClusters = cms.InputTag('l1tPFClustersFromCombinedCaloHCal:calibrated'),
+    emClusters = cms.VInputTag(cms.InputTag('l1tPhase2GCTBarrelToCorrelatorLayer1Emulator', 'GCTEmDigiClusters', 'REPR')),
+    hadClusters = cms.VInputTag(cms.InputTag('l1tPhase2GCTBarrelToCorrelatorLayer1Emulator', 'GCTHadDigiClusters', 'REPR')),
     vtxCollection = cms.InputTag("l1tVertexFinderEmulator","L1VerticesEmulation"),
     nVtx = cms.int32(1),
     emPtCut = cms.double(0.5),
@@ -37,6 +36,15 @@ l1tLayer1Barrel = cms.EDProducer("L1TCorrelatorLayer1Producer",
         ),
     muonInputConversionAlgo = cms.string("Emulator"),
     gctEmInputConversionAlgo = cms.string("Emulator"),
+    gctEmInputConversionParameters = cms.PSet(
+        gctEmCorrector = cms.string("L1Trigger/Phase2L1ParticleFlow/data/emcorr_barrel.root"),
+        gctEmResol = cms.PSet(
+            etaBins = cms.vdouble( 0.700,  1.200,  1.600),
+            offset  = cms.vdouble( 0.873,  1.081,  1.563),
+            scale   = cms.vdouble( 0.011,  0.015,  0.012),
+            kind    = cms.string('calo'),
+        ),
+    ),
     gctHadInputConversionAlgo = cms.string("Emulator"),
     regionizerAlgo = cms.string("Ideal"),
     pfAlgo = cms.string("PFAlgo3"),
@@ -126,13 +134,6 @@ l1tLayer1Barrel = cms.EDProducer("L1TCorrelatorLayer1Producer",
               regions = cms.vuint32(*[3+9*ie+i for ie in range(6) for i in range(3)])), # phi splitting
         cms.PSet(
               regions = cms.vuint32(*[6+9*ie+i for ie in range(6) for i in range(3)])), # phi splitting
-    ),
-    gctEmCorrector = cms.string("L1Trigger/Phase2L1ParticleFlow/data/emcorr_barrel.root"),
-    gctEmResol = cms.PSet(
-            etaBins = cms.vdouble( 0.700,  1.200,  1.600),
-            offset  = cms.vdouble( 0.873,  1.081,  1.563),
-            scale   = cms.vdouble( 0.011,  0.015,  0.012),
-            kind    = cms.string('calo'),
     ),
 )
 
