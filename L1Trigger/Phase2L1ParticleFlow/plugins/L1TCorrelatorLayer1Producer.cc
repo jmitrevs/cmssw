@@ -55,8 +55,6 @@
 #include "DataFormats/L1TCalorimeterPhase2/interface/DigitizedClusterCorrelator.h"
 #include "DataFormats/L1THGCal/interface/HGCalMulticluster.h"
 
-#include "L1Trigger/Phase2L1ParticleFlow/interface/corrector.h"
-#include "L1Trigger/Phase2L1ParticleFlow/interface/ParametricResolution.h"
 
 // constexpr unsigned int calomapping[] = {3, 0, 9, 6, 4, 1, 10, 7, 5, 2, 11, 8};
 constexpr unsigned int calomapping[] = {9, 6, 3, 0, 10, 7, 4, 1, 11, 8, 5, 2};
@@ -82,9 +80,10 @@ private:
 
   edm::EDGetTokenT<l1t::SAMuonCollection> muCands_;  // standalone muons
 
-  edm::EDGetTokenT<l1tp2::CaloCrystalClusterCollection> emCands_;
-  edm::EDGetTokenT<l1tp2::DigitizedClusterCorrelatorCollection> emGctRawCands_;
-  edm::EDGetTokenT<edm::View<l1t::L1Candidate>> hadCands_;
+  // For calo, can give either the already converted containers, or the raw containers (for GCT only)
+  // These are the already converted containers
+  std::vector<edm::EDGetTokenT<l1t::PFClusterCollection>> emCands_;
+  std::vector<edm::EDGetTokenT<l1t::PFClusterCollection>> hadCands_;
 
   // can alternately give the raw containers (for GCT)
   std::vector<edm::EDGetTokenT<l1tp2::GCTEmDigiClusterCollection>> emRawCands_;
@@ -118,10 +117,6 @@ private:
   std::unordered_map<const l1t::PFTrack *, l1t::PFTrackRef> trackRefMap_;
   std::unordered_map<const l1t::SAMuon *, l1t::PFCandidate::MuonRef> muonRefMap_;
 
-  // tools for GCT clusters
-  l1tpf::corrector corrector_;
-  l1tpf::ParametricResolution resol_;
-
   // main methods
   void beginStream(edm::StreamID) override;
   void endStream() override;
@@ -150,15 +145,18 @@ private:
   // add object, tracking references
   void addTrack(const l1t::PFTrack &t, l1t::PFTrackRef ref);
   void addMuon(const l1t::SAMuon &t, l1t::PFCandidate::MuonRef ref);
-  // for already decoded calos as input
-  void addHadCalo(const l1t::PFCluster &t, l1t::PFClusterRef ref);
-  void addEmCalo(const l1t::PFCluster &t, l1t::PFClusterRef ref);
+  // // for already decoded calos as input
+  // void addHadCalo(const l1t::PFCluster &t, l1t::PFClusterRef ref);
+  // void addEmCalo(const l1t::PFCluster &t, l1t::PFClusterRef ref);
   // for raw calos as input
   void addEmCaloRaw(const l1tp2::GCTEmDigiClusterLink &link, unsigned int linkidx, unsigned int entidx);
   void addHadCaloRaw(const l1tp2::GCTHadDigiClusterLink &link, unsigned int linkidx, unsigned int entidx);
   // add objects in already-decoded format
   void addDecodedTrack(l1ct::DetectorSector<l1ct::TkObjEmu> &sec, const l1t::PFTrack &t);
   void addDecodedMuon(l1ct::DetectorSector<l1ct::MuObjEmu> &sec, const l1t::SAMuon &t);
+  void addDecodedGCTEmCalo(l1ct::DetectorSector<l1ct::EmCaloObjEmu> &sec, const l1tp2::GCTEmDigiCluster &digi);
+  void addDecodedGCTHadCalo(l1ct::DetectorSector<l1ct::HadCaloObjEmu> &sec, const l1tp2::GCTHadDigiCluster &digi);
+
   void rawHgcalClusterEncode(ap_uint<256> &cwrd,
                              const l1ct::DetectorSector<ap_uint<256>> &sec,
                              const l1t::HGCalMulticluster *c) const;
@@ -224,10 +222,6 @@ L1TCorrelatorLayer1Producer::L1TCorrelatorLayer1Producer(const edm::ParameterSet
                           : edm::EDGetTokenT<l1t::PFTrackCollection>()),
       trkPt_(iConfig.getParameter<double>("trkPtCut")),
       muCands_(consumes<l1t::SAMuonCollection>(iConfig.getParameter<edm::InputTag>("muons"))),
-      //emCands_(consumes<l1tp2::CaloCrystalClusterCollection>(iConfig.getParameter<edm::InputTag>("emGctClusters"))),
-      //emGctRawCands_(consumes<l1tp2::DigitizedClusterCorrelatorCollection>(
-      //    iConfig.getParameter<edm::InputTag>("emGctRawClusters"))),
-      hadCands_(consumes<edm::View<l1t::L1Candidate>>(iConfig.getParameter<edm::InputTag>("hadClusters"))),
       emPtCut_(iConfig.getParameter<double>("emPtCut")),
       hadPtCut_(iConfig.getParameter<double>("hadPtCut")),
       regionizer_(nullptr),
@@ -239,9 +233,7 @@ L1TCorrelatorLayer1Producer::L1TCorrelatorLayer1Producer(const edm::ParameterSet
       patternWriterConfigs_(iConfig.getUntrackedParameter<edm::VParameterSet>("patternWriters")),
       debugEta_(iConfig.getUntrackedParameter<double>("debugEta")),
       debugPhi_(iConfig.getUntrackedParameter<double>("debugPhi")),
-      debugR_(iConfig.getUntrackedParameter<double>("debugR")),
-      corrector_(iConfig.getParameter<std::string>("gctEmCorrector"), -1),
-      resol_(iConfig.getParameter<edm::ParameterSet>("gctEmResol")) {
+      debugR_(iConfig.getUntrackedParameter<double>("debugR")) {
   produces<l1t::PFCandidateCollection>("PF");
   produces<l1t::PFCandidateCollection>("Puppi");
   produces<l1t::PFCandidateRegionalOutput>("PuppiRegional");
@@ -279,10 +271,10 @@ L1TCorrelatorLayer1Producer::L1TCorrelatorLayer1Producer(const edm::ParameterSet
   } else if (hgcalInAlgo != "Ideal")
     throw cms::Exception("Configuration", "Unsupported hgcalInputConversionAlgo");
 
-  // const std::string &gctEmInAlgo = iConfig.getParameter<std::string>("gctEmInputConversionAlgo");
+  const std::string &gctEmInAlgo = iConfig.getParameter<std::string>("gctEmInputConversionAlgo");
   if (gctEmInAlgo == "Emulator") {
-    //gctEmInput_ = std::make_unique<l1ct::GctEmClusterDecoderEmulator>(
-        //iConfig.getParameter<edm::ParameterSet>("gctEmInputConversionParameters"));
+    gctEmInput_ = std::make_unique<l1ct::GctEmClusterDecoderEmulator>(
+        iConfig.getParameter<edm::ParameterSet>("gctEmInputConversionParameters"));
     for (const auto &tag : iConfig.getParameter<std::vector<edm::InputTag>>("emClusters")) {
       emRawCands_.push_back(consumes<l1tp2::GCTEmDigiClusterCollection>(tag));
     }
@@ -296,8 +288,8 @@ L1TCorrelatorLayer1Producer::L1TCorrelatorLayer1Producer(const edm::ParameterSet
 
   const std::string &gctHadInAlgo = iConfig.getParameter<std::string>("gctHadInputConversionAlgo");
   if (gctHadInAlgo == "Emulator") {
-    //gctHadInput_ = std::make_unique<l1ct::GctHadClusterDecoderEmulator>(
-        // iConfig.getParameter<edm::ParameterSet>("gctHadInputConversionParameters"));
+    gctHadInput_ = std::make_unique<l1ct::GctHadClusterDecoderEmulator>(
+        iConfig.getParameter<edm::ParameterSet>("gctHadInputConversionParameters"));
     for (const auto &tag : iConfig.getParameter<std::vector<edm::InputTag>>("hadClusters")) {
       hadRawCands_.push_back(consumes<l1tp2::GCTHadDigiClusterCollection>(tag));
     }
@@ -562,31 +554,31 @@ void L1TCorrelatorLayer1Producer::produce(edm::Event &iEvent, const edm::EventSe
   }
 
   // this is for parsing decoded calo information
-  {
-    edm::Handle<l1t::PFClusterCollection> caloHandle;
-    for (const auto &tag : emCands_) {
-      iEvent.getByToken(tag, caloHandle);
-      const auto &calos = *caloHandle;
-      for (unsigned int ic = 0, nc = calos.size(); ic < nc; ++ic) {
-        const auto &calo = calos[ic];
-        if (debugR_ > 0 && deltaR(calo.eta(), calo.phi(), debugEta_, debugPhi_) > debugR_)
-          continue;
-        if (calo.pt() > emPtCut_)
-          addEmCalo(calo, l1t::PFClusterRef(caloHandle, ic));
-      }
-    }
-    for (const auto &tag : hadCands_) {
-      iEvent.getByToken(tag, caloHandle);
-      const auto &calos = *caloHandle;
-      for (unsigned int ic = 0, nc = calos.size(); ic < nc; ++ic) {
-        const auto &calo = calos[ic];
-        if (debugR_ > 0 && deltaR(calo.eta(), calo.phi(), debugEta_, debugPhi_) > debugR_)
-          continue;
-        if (calo.pt() > hadPtCut_)
-          addHadCalo(calo, l1t::PFClusterRef(caloHandle, ic));
-      }
-    }
-  }
+  // {
+  //   edm::Handle<l1t::PFClusterCollection> caloHandle;
+  //   for (const auto &tag : emCands_) {
+  //     iEvent.getByToken(tag, caloHandle);
+  //     const auto &calos = *caloHandle;
+  //     for (unsigned int ic = 0, nc = calos.size(); ic < nc; ++ic) {
+  //       const auto &calo = calos[ic];
+  //       if (debugR_ > 0 && deltaR(calo.eta(), calo.phi(), debugEta_, debugPhi_) > debugR_)
+  //         continue;
+  //       if (calo.pt() > emPtCut_)
+  //         addEmCalo(calo, l1t::PFClusterRef(caloHandle, ic));
+  //     }
+  //   }
+  //   for (const auto &tag : hadCands_) {
+  //     iEvent.getByToken(tag, caloHandle);
+  //     const auto &calos = *caloHandle;
+  //     for (unsigned int ic = 0, nc = calos.size(); ic < nc; ++ic) {
+  //       const auto &calo = calos[ic];
+  //       if (debugR_ > 0 && deltaR(calo.eta(), calo.phi(), debugEta_, debugPhi_) > debugR_)
+  //         continue;
+  //       if (calo.pt() > hadPtCut_)
+  //         addHadCalo(calo, l1t::PFClusterRef(caloHandle, ic));
+  //     }
+  //   }
+  // }
 
   // this is for parsing raw calo information
   for (const auto &tag : emRawCands_) {
@@ -606,73 +598,7 @@ void L1TCorrelatorLayer1Producer::produce(edm::Event &iEvent, const edm::EventSe
     for (unsigned int ic = 0; ic < links.size(); ++ic) {
       const auto &link = links[ic];
       for (unsigned int ie = 0; ie < link.size(); ++ie) {
-        addHadCaloRaw(calo, ic, ie);
-      }
-    }
-  }
-
-  //edm::Handle<l1tp2::CaloCrystalClusterCollection> emClusters;
-  edm::Handle<l1tp2::DigitizedClusterCorrelatorCollection> emRawClusters;
-  iEvent.getByToken(emCands_, emClusters);
-  iEvent.getByToken(emGctRawCands_, emRawClusters);
-  if (emClusters.isValid() && emRawClusters.isValid()) {
-    const auto &calos = *emClusters;
-    const auto &rawCalos = *emRawClusters;
-    assert(calos.size() == rawCalos.size());
-
-    for (unsigned int ic = 0, nc = calos.size(); ic < nc; ++ic) {
-      const auto &calo = calos[ic];
-      const auto &rawCalo = rawCalos[ic];
-      if (debugR_ > 0 && deltaR(calo.eta(), calo.phi(), debugEta_, debugPhi_) > debugR_)
-        continue;
-      for (unsigned int isec = 0; isec < event_.decoded.emcalo.size(); isec++) {
-        auto &sec = event_.decoded.emcalo[isec];
-        if (sec.region.contains(calo.eta(), calo.phi())) {
-          l1ct::EmCaloObjEmu decCalo;
-          // FIXME: this should be replaced by a call to the unpacker....
-          getDecodedGctEmCluster(decCalo, sec, rawCalo);
-          if (decCalo.floatPt() > hadPtCut_) {
-            addDecodedEmCalo(decCalo, emClusters, ic, sec);
-          }
-        }
-      }
-    }
-  }
-
-  edm::Handle<edm::View<l1t::L1Candidate>> caloHandle;
-  iEvent.getByToken(hadCands_, caloHandle);
-  if (caloHandle.isValid()) {  // In this case we convert the calo-clusters to raw
-    const auto &calos = *caloHandle;
-    for (unsigned int ic = 0; ic < calos.size(); ++ic) {
-      const auto &calo = calos[ic];
-      if (debugR_ > 0 && deltaR(calo.eta(), calo.phi(), debugEta_, debugPhi_) > debugR_)
-        continue;
-
-      for (unsigned int isec = 0; isec < event_.decoded.hadcalo.size(); isec++) {
-        auto &sec = event_.decoded.hadcalo[isec];
-        // Get the raw and decoded sectors
-        if (sec.region.contains(calo.eta(), calo.phi())) {
-          l1ct::HadCaloObjEmu decCalo;
-          bool valid = true;
-          // Get the raw word
-          if (hgcalInput_) {  // HGCal input
-            auto &sec_raw = event_.raw.hgcalcluster[isec];
-            ap_uint<256> cwrd = 0;
-            encodeAndAddHgcalCluster(cwrd, sec_raw, calo);
-            // Crete the decoded object calling the unpacker
-            // Use the valid flag to reject PU clusters when creating the decoded object
-            decCalo = hgcalInput_->decode(sec_raw.region, cwrd, valid);
-          } else {  // GCT Inputs & PF
-            const l1t::PFCluster *pfcl = dynamic_cast<const l1t::PFCluster *>(&calo);
-            // FIXME: for now we keep using l1t::PFClusters but should move to the GCT emulated collection
-            // and proper unpacking
-            // FIXME: this should be replaced by a call to the unpacker....
-            getDecodedGctPFCluster(decCalo, sec, pfcl);
-          }
-          if (decCalo.floatPt() > hadPtCut_ && valid) {
-            addDecodedHadCalo(decCalo, caloHandle, ic, sec);
-          }
-        }
+        addHadCaloRaw(link, ic, ie);
       }
     }
   }
@@ -927,16 +853,6 @@ void L1TCorrelatorLayer1Producer::addHadPFCluster(const l1ct::HadCaloObjEmu &dec
   setRefs_(pfClusters->back(), decCalo);
 }
 
-void L1TCorrelatorLayer1Producer::addDecodedHadCalo(l1ct::HadCaloObjEmu &decCalo,
-                                                    const edm::Handle<edm::View<l1t::L1Candidate>> &caloHandle,
-                                                    unsigned int ic,
-                                                    l1ct::DetectorSector<l1ct::HadCaloObjEmu> &sec) {
-  const auto caloPtr = edm::Ptr<l1t::L1Candidate>(caloHandle, ic);
-  clusterRefMap_[caloPtr.get()] = caloPtr;
-  decCalo.src = caloPtr.get();
-  sec.obj.push_back(decCalo);
-}
-
 void L1TCorrelatorLayer1Producer::addUInt(unsigned int value, std::string iLabel, edm::Event &iEvent) {
   iEvent.put(std::make_unique<unsigned>(value), iLabel);
 }
@@ -1057,18 +973,12 @@ void L1TCorrelatorLayer1Producer::addMuon(const l1t::SAMuon &mu, l1t::PFCandidat
 
 void L1TCorrelatorLayer1Producer::addEmCaloRaw(const l1tp2::GCTEmDigiClusterLink &link, unsigned int linkidx, unsigned int entidx) {
   event_.raw.gctEm[calomapping[linkidx]].obj.push_back(link[entidx].data());
-  l1ct::EmCaloObjEmu decCalo;
-  getDecodedGctEmCluster(decCalo, event_.decoded.emcalo[calomapping[linkidx]], link[entidx]);
-  event_.decoded.emcalo[calomapping[linkidx]];
-  auto caloPtr = edm::refToPtr(link[entidx].clusterRef());
-  clusterRefMap_[caloPtr.get()] = caloPtr;
-  event_.decoded.emcalo[calomapping[linkidx]].obj.push_back(decCalo);
+  addDecodedGCTEmCalo(event_.decoded.emcalo[calomapping[linkidx]], link[entidx]);
 }
 
 void L1TCorrelatorLayer1Producer::addHadCaloRaw(const l1tp2::GCTHadDigiClusterLink &link, unsigned int linkidx, unsigned int entidx) {
   event_.raw.gctHad[calomapping[linkidx]].obj.push_back(link[entidx].data());
-  addDecodedGCTHadCalo(event_.decoded.hadcalo[calomapping[linkidx]], link[entidx].data());
-  // for the moment, not setting a ref map
+  addDecodedGCTHadCalo(event_.decoded.hadcalo[calomapping[linkidx]], link[entidx]);
 }
 
 void L1TCorrelatorLayer1Producer::addDecodedTrack(l1ct::DetectorSector<l1ct::TkObjEmu> &sec, const l1t::PFTrack &t) {
@@ -1126,46 +1036,26 @@ void L1TCorrelatorLayer1Producer::addDecodedMuon(l1ct::DetectorSector<l1ct::MuOb
   sec.obj.push_back(mu);
 }
 
-void L1TCorrelatorLayer1Producer::getDecodedGctEmCluster(l1ct::EmCaloObjEmu &calo,
-                                                         l1ct::DetectorSector<l1ct::EmCaloObjEmu> &sec,
-                                                         const l1tp2::GCTEmDigiCluster &digi) const {
-  constexpr float ETA_RANGE_ONE_SIDE = 1.4841;  // barrel goes from (-1.4841, +1.4841)
-  constexpr float ETA_LSB = 2 * ETA_RANGE_ONE_SIDE / 170.;
-  constexpr float PHI_LSB = 2 * M_PI / 360.;
+void L1TCorrelatorLayer1Producer::addDecodedGCTEmCalo(l1ct::DetectorSector<l1ct::EmCaloObjEmu> &sec,
+                                                      const l1tp2::GCTEmDigiCluster &digi) {
+  l1ct::EmCaloObjEmu calo = gctEmInput_->decode(sec, digi);
 
-  calo.clear();
-  calo.src = digi.clusterRef().get();
-  calo.hwPt = l1ct::Scales::makePtFromFloat(digi.ptFloat());
-  calo.hwEta = l1ct::Scales::makeGlbEta(digi.digiClusterRef()->realEta() + ETA_LSB / 2.) -
-               sec.region.hwEtaCenter;  // FIXME: correct here a 1/2 a crystal bias
-  calo.hwPhi = l1ct::Scales::makePhi(
-      sec.region.localPhi(digi.digiClusterRef()->realPhi() + PHI_LSB / 2.));  // FIXME: correct here a 1/2 a crystal bias
-  if (corrector_.valid()) {
-    float newpt = corrector_.correctedPt(calo.floatPt(), calo.floatPt(), sec.region.floatGlbEta(calo.hwEta));
-    calo.hwPt = l1ct::Scales::makePtFromFloat(newpt);
-  }
-  calo.hwPtErr = l1ct::Scales::makePtFromFloat(resol_(calo.floatPt(), std::abs(sec.region.floatGlbEta(calo.hwEta))));
-
-  // hwQual definition:
-  // bit 0: standaloneWP: is_iso && is_ss
-  // bit 1: looseL1TkMatchWP: is_looseTkiso && is_looseTkss
-  // bit 2: photonWP:
-  calo.hwEmID = (digi.passes_iso() & digi.passes_ss()) | ((digi.passes_looseTkiso() & digi.passes_looseTkss()) << 1) |
-                (false << 2);
+  auto caloPtr = edm::refToPtr(digi.clusterRef());
+  clusterRefMap_[caloPtr.get()] = caloPtr;
+  calo.src = caloPtr.get();
+  sec.obj.push_back(calo);
 }
 
-void L1TCorrelatorLayer1Producer::getDecodedGctPFCluster(l1ct::HadCaloObjEmu &calo,
-                                                         l1ct::DetectorSector<l1ct::HadCaloObjEmu> &sec,
-                                                         const GCTHadDigiCluster &digi) const {
-  calo.clear();
-  calo.hwPt = l1ct::Scales::makePtFromFloat(c->pt());
-  calo.hwEta = l1ct::Scales::makeGlbEta(c->eta()) -
-               sec.region.hwEtaCenter;  // important to enforce that the region boundary is on a discrete value
-  calo.hwPhi = l1ct::Scales::makePhi(sec.region.localPhi(c->phi()));
-  calo.hwEmPt = l1ct::Scales::makePtFromFloat(c->emEt());
-  calo.hwEmID = c->hwEmID();
-  calo.hwHoe = l1ct::Scales::makeHoe(c->hOverE());
+void L1TCorrelatorLayer1Producer::addDecodedGCTHadCalo(l1ct::DetectorSector<l1ct::HadCaloObjEmu> &sec,
+                                                       const l1tp2::GCTHadDigiCluster &digi) {
+  l1ct::HadCaloObjEmu calo = gctHadInput_->decode(sec, digi);
+
+  auto caloPtr = edm::refToPtr(digi.clusterRef());
+  clusterRefMap_[caloPtr.get()] = caloPtr;
+  calo.src = caloPtr.get();
+  sec.obj.push_back(calo);
 }
+
 
 template <typename T>
 void L1TCorrelatorLayer1Producer::setRefs_(l1t::PFCandidate &pf, const T &p) const {

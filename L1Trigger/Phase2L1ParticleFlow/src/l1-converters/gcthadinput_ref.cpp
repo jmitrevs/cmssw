@@ -18,34 +18,36 @@ double l1ct::GctHadClusterDecoderEmulator::fracPart(const double total, const un
   return total * std::pow(2.0, hoe) / (std::pow(2.0, hoe) + 1);
 }
 
-l1ct::HadCaloObjEmu l1ct::GctHadClusterDecoderEmulator::decode(const ap_uint<64> &in) const {
-  ap_uint<12> pt = in(11, 0);
-  ap_int<7> eta = in(18, 12);
-  ap_int<7> phi = in(25, 19);
+l1ct::HadCaloObjEmu l1ct::GctHadClusterDecoderEmulator::decode(const l1ct::DetectorSector<l1ct::HadCaloObjEmu> &sec,
+                                                               const l1tp2::GCTHadDigiCluster &digi) const {
 
-  l1ct::HadCaloObjEmu out;
-  out.clear();
-  out.hwPt = pt * l1ct::pt_t(0.5);  // the LSB for GCT objects
-  out.hwEta = eta * 4;
-  out.hwPhi = phi * 4;
+  l1ct::HadCaloObjEmu calo;
+  calo.clear();
+  calo.hwPt = digi.pt() * l1ct::pt_t(0.5);  // the LSB for GCT objects
+  calo.hwEta = digi.eta() * 4;
+  calo.hwPhi = digi.phi() * 4;
+  calo.hwHoe = digi.hoe();
 
+  // TODO:  this should change
   // need to add empt
-  ap_uint<4> hoeVal = in(30, 27);
+  ap_uint<4> hoeVal = digi.hoe();
   // the lsb indicates what's bigger, EM or HAD
   auto isEMBigger = static_cast<bool>(hoeVal[0]);
   // This is not quite true. If HAD energy goes down to 0, then it flips and says that HAD is bigger
   ap_uint<3> hoe = hoeVal(3, 1);
 
   if (isEMBigger) {
-    auto em = fracPart(out.hwPt.to_double(), hoe.to_uint());
-    out.hwEmPt = em;
+    auto em = fracPart(calo.hwPt.to_double(), hoe.to_uint());
+    calo.hwEmPt = em;
   } else {
-    pt_t had = fracPart(out.hwPt.to_double(), hoe.to_uint());
-    out.hwEmPt = out.hwPt - had;
+    pt_t had = fracPart(calo.hwPt.to_double(), hoe.to_uint());
+    calo.hwEmPt = calo.hwPt - had;
   }
 
-  // need to add emid
-  out.hwEmID = 1;
+  calo.hwHoe = hoe.to_uint();  // might need to scale
 
-  return out;
+  // need to add emid
+  calo.hwEmID = 1;
+
+  return calo;
 }

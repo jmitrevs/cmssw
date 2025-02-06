@@ -4,30 +4,51 @@
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/ParameterSet/interface/ParameterSetDescription.h"
 
-l1ct::GctEmClusterDecoderEmulator::GctEmClusterDecoderEmulator(const edm::ParameterSet &pset) {}
+
+// TODO: Currently this only works in CMSSW 
+l1ct::GctEmClusterDecoderEmulator::GctEmClusterDecoderEmulator(const edm::ParameterSet &iConfig)
+  : config_(iConfig),
+  corrector_(iConfig.getParameter<std::string>("gctEmCorrector"), -1),
+  resol_(iConfig.getParameter<edm::ParameterSet>("gctEmResol")) {
+}
 
 edm::ParameterSetDescription l1ct::GctEmClusterDecoderEmulator::getParameterSetDescription() {
   edm::ParameterSetDescription description;
+  description.add<std::string>("gctEmCorrector");
+  edm::ParameterSetDescription gctEmResolPSD;
+  gctEmResolPSD.add<std::vector<double>>("etaBins");
+  gctEmResolPSD.add<std::vector<double>>("offset");
+  gctEmResolPSD.add<std::vector<double>>("scale");
+  gctEmResolPSD.add<std::string>("kind");
+  description.add<edm::ParameterSetDescription>("gctEmResol", gctEmResolPSD);
   return description;
 }
 #endif
 
 l1ct::GctEmClusterDecoderEmulator::~GctEmClusterDecoderEmulator() {}
 
-l1ct::EmCaloObjEmu l1ct::GctEmClusterDecoderEmulator::decode(const ap_uint<64> &in) const {
-  ap_uint<12> pt = in(11, 0);
-  ap_int<7> eta = in(18, 12);
-  ap_int<7> phi = in(25, 19);
+l1ct::EmCaloObjEmu l1ct::GctEmClusterDecoderEmulator::decode(const l1ct::DetectorSector<l1ct::EmCaloObjEmu> &sec,
+                                                             const l1tp2::GCTEmDigiCluster &digi) const {
 
   // need to add emid
-  l1ct::EmCaloObjEmu out;
-  out.clear();
-  out.hwPt = pt * l1ct::pt_t(0.5);  // the LSB for GCT objects
-  out.hwEta = eta * 4;
-  out.hwPhi = phi * 4;
+  l1ct::EmCaloObjEmu calo;
+  calo.clear();
+  calo.hwPt = digi.pt() * l1ct::pt_t(0.5);  // the LSB for GCT objects
+  calo.hwEta = digi.eta() * 4;
+  calo.hwPhi = digi.phi() * 4;
 
-  // need to add emid
-  out.hwEmID = 1;
+  if (corrector_.valid()) {
+    float newpt = corrector_.correctedPt(calo.floatPt(), calo.floatPt(), sec.region.floatGlbEta(calo.hwEta));
+    calo.hwPt = l1ct::Scales::makePtFromFloat(newpt);
+  }
+  calo.hwPtErr = l1ct::Scales::makePtFromFloat(resol_(calo.floatPt(), std::abs(sec.region.floatGlbEta(calo.hwEta))));
 
-  return out;
+  // hwQual definition:
+  // bit 0: standaloneWP: is_iso && is_ss
+  // bit 1: looseL1TkMatchWP: is_looseTkiso && is_looseTkss
+  // bit 2: photonWP:
+  calo.hwEmID = (digi.passes_iso() & digi.passes_ss()) | ((digi.passes_looseTkiso() & digi.passes_looseTkss()) << 1) |
+                (false << 2);
+
+  return calo;
 }
