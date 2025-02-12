@@ -731,10 +731,10 @@ void L1TCorrelatorLayer1Producer::rawHgcalClusterEncode(ap_uint<256> &cwrd,
   float em_frac_tot = c->hOverE() < 0 ? 0. : 1. / (c->hOverE() + 1.);
   ap_uint<8> w_emfrac_tot = std::min(round(em_frac_tot * 256), float(255.));
 
-  constexpr float ETAPHI_LSB = M_PI / 720;
-  constexpr float SIGMAZZ_LSB = 778.098 / (1 << 7);
-  constexpr float SIGMAPHIPHI_LSB = 0.12822 / (1 << 7);
-  constexpr float SIGMAETAETA_LSB = 0.148922 / (1 << 5);
+  static constexpr float ETAPHI_LSB = M_PI / 720;
+  static constexpr float SIGMAZZ_LSB = 778.098 / (1 << 7);
+  static constexpr float SIGMAPHIPHI_LSB = 0.12822 / (1 << 7);
+  static constexpr float SIGMAETAETA_LSB = 0.148922 / (1 << 5);
 
   ap_uint<10> w_eta = round(fabs(c->eta()) / ETAPHI_LSB);
   ap_int<9> w_phi = round(sec.region.localPhi(c->phi()) / ETAPHI_LSB);
