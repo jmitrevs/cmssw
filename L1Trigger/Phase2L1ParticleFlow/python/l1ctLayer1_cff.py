@@ -262,7 +262,7 @@ l1tLayer1HGCal = cms.EDProducer("L1TCorrelatorLayer1Producer",
         writeBeforeBremRecovery = False,
         writeEGSta = True,
         algorithm = 1,
-        trkQualityPtMin = 0.,
+        trkQualityPtMin = 0., # This should be 10 GeV when doCompositeTkEle = False
         # compositeParametersTkEle=cms.PSet(
         #     # NOTE: conifer BDT score is log(p/1-p)
         #     # the working points are cuts on BDT output logits [log(p/1-p)]/4 (range -1 to 1 to match the FW dataformat)
@@ -270,7 +270,7 @@ l1tLayer1HGCal = cms.EDProducer("L1TCorrelatorLayer1Producer",
         #     tight_wp=cms.double(0.0527344),
         #     model=cms.string("L1Trigger/Phase2L1ParticleFlow/data/egamma/compositeID_EE_v1.json")
         # ),
-        ), # This should be 10 GeV when doCompositeTkEle = False
+        ), 
     tkEgSorterAlgo = cms.string("Endcap"),
     tkEgSorterParameters = tkEgSorterParameters.clone(
         nObjToSort = 5
