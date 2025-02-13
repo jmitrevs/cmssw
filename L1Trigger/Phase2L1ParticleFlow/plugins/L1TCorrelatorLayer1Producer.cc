@@ -82,12 +82,12 @@ private:
 
   // For calo, can give either the already converted containers, or the raw containers (for GCT only)
   // These are the already converted containers
-  std::vector<edm::EDGetTokenT<l1t::PFClusterCollection>> emCands_;
-  std::vector<edm::EDGetTokenT<l1t::PFClusterCollection>> hadCands_;
+  edm::EDGetTokenT<l1t::PFClusterCollection> emCands_;
+  edm::EDGetTokenT<l1t::PFClusterCollection> hadCands_;
 
   // can alternately give the raw containers (for GCT)
-  std::vector<edm::EDGetTokenT<l1tp2::GCTEmDigiClusterCollection>> emRawCands_;
-  std::vector<edm::EDGetTokenT<l1tp2::GCTHadDigiClusterCollection>> hadRawCands_;
+  edm::EDGetTokenT<l1tp2::GCTEmDigiClusterCollection> emRawCands_;
+  edm::EDGetTokenT<l1tp2::GCTHadDigiClusterCollection> hadRawCands_;
 
   float emPtCut_, hadPtCut_;
 
@@ -272,31 +272,25 @@ L1TCorrelatorLayer1Producer::L1TCorrelatorLayer1Producer(const edm::ParameterSet
     throw cms::Exception("Configuration", "Unsupported hgcalInputConversionAlgo");
 
   const std::string &gctEmInAlgo = iConfig.getParameter<std::string>("gctEmInputConversionAlgo");
+  const edm::InputTag emClusters = iConfig.getParameter<edm::InputTag>("emClusters");
   if (gctEmInAlgo == "Emulator") {
     gctEmInput_ = std::make_unique<l1ct::GctEmClusterDecoderEmulator>(
         iConfig.getParameter<edm::ParameterSet>("gctEmInputConversionParameters"));
-    for (const auto &tag : iConfig.getParameter<std::vector<edm::InputTag>>("emClusters")) {
-      emRawCands_.push_back(consumes<l1tp2::GCTEmDigiClusterCollection>(tag));
-    }
+    emRawCands_ = consumes<l1tp2::GCTEmDigiClusterCollection>(emClusters);
   } else if (gctEmInAlgo == "Ideal") {
-    for (const auto &tag : iConfig.getParameter<std::vector<edm::InputTag>>("emClusters")) {
-      emCands_.push_back(consumes<l1t::PFClusterCollection>(tag));
-    }
+    emCands_ = consumes<l1t::PFClusterCollection>(emClusters);
   } else {
     throw cms::Exception("Configuration", "Unsupported gctEmInputConversionAlgo");
   }
 
   const std::string &gctHadInAlgo = iConfig.getParameter<std::string>("gctHadInputConversionAlgo");
+  const edm::InputTag hadClusters = iConfig.getParameter<edm::InputTag>("hadClusters");
   if (gctHadInAlgo == "Emulator") {
     gctHadInput_ = std::make_unique<l1ct::GctHadClusterDecoderEmulator>(
         iConfig.getParameter<edm::ParameterSet>("gctHadInputConversionParameters"));
-    for (const auto &tag : iConfig.getParameter<std::vector<edm::InputTag>>("hadClusters")) {
-      hadRawCands_.push_back(consumes<l1tp2::GCTHadDigiClusterCollection>(tag));
-    }
+    hadRawCands_ = consumes<l1tp2::GCTHadDigiClusterCollection>(hadClusters);
   } else if (gctHadInAlgo == "Ideal") {
-    for (const auto &tag : iConfig.getParameter<std::vector<edm::InputTag>>("hadClusters")) {
-      hadCands_.push_back(consumes<l1t::PFClusterCollection>(tag));
-    }
+    hadCands_ = consumes<l1t::PFClusterCollection>(hadClusters);
   } else {
     throw cms::Exception("Configuration", "Unsupported gctHadInputConversionAlgo");
   }
@@ -399,8 +393,7 @@ void L1TCorrelatorLayer1Producer::fillDescriptions(edm::ConfigurationDescription
   // Inputs and cuts
   desc.add<edm::InputTag>("tracks", edm::InputTag(""));
   desc.add<edm::InputTag>("muons", edm::InputTag("l1tSAMuonsGmt", "prompt"));
-  desc.add<edm::InputTag>("emGctClusters", edm::InputTag(""));
-  desc.add<edm::InputTag>("emGctRawClusters", edm::InputTag(""));
+  desc.add<edm::InputTag>("emClusters", edm::InputTag(""));
   desc.add<edm::InputTag>("hadClusters", edm::InputTag(""));
   desc.add<edm::InputTag>("vtxCollection", edm::InputTag("l1tVertexFinderEmulator", "L1VerticesEmulation"));
   desc.add<bool>("vtxCollectionEmulation", true);
@@ -475,13 +468,6 @@ void L1TCorrelatorLayer1Producer::fillDescriptions(edm::ConfigurationDescription
   desc.addUntracked<double>("debugEta", 0.);
   desc.addUntracked<double>("debugPhi", 0.);
   desc.addUntracked<double>("debugR", -1.);
-  desc.add<std::string>("gctEmCorrector");
-  edm::ParameterSetDescription gctEmResolPSD;
-  gctEmResolPSD.add<std::vector<double>>("etaBins");
-  gctEmResolPSD.add<std::vector<double>>("offset");
-  gctEmResolPSD.add<std::vector<double>>("scale");
-  gctEmResolPSD.add<std::string>("kind");
-  desc.add<edm::ParameterSetDescription>("gctEmResol", gctEmResolPSD);
   descriptions.add("l1tCorrelatorLayer1", desc);
 }
 
@@ -545,11 +531,11 @@ void L1TCorrelatorLayer1Producer::produce(edm::Event &iEvent, const edm::EventSe
   // ------ READ CALOS -----
 
   // ensure that only raw or decoded calo information is avalable, not both
-  if (emCands_.size() && emRawCands_.size()) {
+  if (!emCands_.isUninitialized() && !emRawCands_.isUninitialized()) {
     throw cms::Exception("Both emClusters and emRawClusters should not be filled");
   }
 
-  if (hadCands_.size() && hadRawCands_.size()) {
+  if (!hadCands_.isUninitialized() && !hadRawCands_.isUninitialized()) {
     throw cms::Exception("Both hadClusters and hadRawClusters should not be filled");
   }
 
@@ -581,8 +567,8 @@ void L1TCorrelatorLayer1Producer::produce(edm::Event &iEvent, const edm::EventSe
   // }
 
   // this is for parsing raw calo information
-  for (const auto &tag : emRawCands_) {
-    auto caloHandle = iEvent.getHandle(tag);
+  {
+    auto caloHandle = iEvent.getHandle(emRawCands_);
     const auto &links = *caloHandle;
     for (unsigned int ic = 0; ic < links.size(); ++ic) {
       const auto &link = links[ic];
@@ -592,8 +578,8 @@ void L1TCorrelatorLayer1Producer::produce(edm::Event &iEvent, const edm::EventSe
     }
   }
 
-  for (const auto &tag : hadRawCands_) {
-    auto caloHandle = iEvent.getHandle(tag);
+  {
+    auto caloHandle = iEvent.getHandle(hadRawCands_);
     const auto &links = *caloHandle;
     for (unsigned int ic = 0; ic < links.size(); ++ic) {
       const auto &link = links[ic];
