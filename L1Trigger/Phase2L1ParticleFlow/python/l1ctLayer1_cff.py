@@ -11,8 +11,8 @@ from L1Trigger.Phase2L1ParticleFlow.l1TkEgAlgoEmulator_cfi import tkEgAlgoParame
 l1tLayer1Barrel = cms.EDProducer("L1TCorrelatorLayer1Producer",
     tracks = cms.InputTag('l1tPFTracksFromL1Tracks'),
     muons = cms.InputTag('l1tSAMuonsGmt','prompt'),
-    emClusters = cms.VInputTag(cms.InputTag('l1tPhase2GCTBarrelToCorrelatorLayer1Emulator', 'GCTEmDigiClusters', 'REPR')),
-    hadClusters = cms.VInputTag(cms.InputTag('l1tPhase2GCTBarrelToCorrelatorLayer1Emulator', 'GCTHadDigiClusters', 'REPR')),
+    emClusters = cms.InputTag('l1tPhase2GCTBarrelToCorrelatorLayer1Emulator', 'GCTEmDigiClusters', 'REPR'),
+    hadClusters = cms.InputTag('l1tPhase2GCTBarrelToCorrelatorLayer1Emulator', 'GCTHadDigiClusters', 'REPR'),
     vtxCollection = cms.InputTag("l1tVertexFinderEmulator","L1VerticesEmulation"),
     nVtx = cms.int32(1),
     emPtCut = cms.double(0.5),
@@ -156,8 +156,7 @@ _hgcalSectors = cms.VPSet(
 l1tLayer1HGCal = cms.EDProducer("L1TCorrelatorLayer1Producer",
     tracks = cms.InputTag('l1tPFTracksFromL1Tracks'),
     muons = cms.InputTag('l1tSAMuonsGmt','prompt'),
-    emGctClusters = cms.InputTag(""), # the em clusters are "intercepted" from the had ones in the regionizer
-    emGctRawClusters = cms.InputTag(""),
+    emClusters = cms.InputTag(""), # the em clusters are "intercepted" from the had ones in the regionizer
     hadClusters = cms.InputTag("l1tHGCalBackEndLayer2Producer","HGCalBackendLayer2Processor3DClustering"),
     vtxCollection = cms.InputTag("l1tVertexFinderEmulator","L1VerticesEmulation"),
     nVtx = cms.int32(1),
@@ -301,14 +300,6 @@ l1tLayer1HGCal = cms.EDProducer("L1TCorrelatorLayer1Producer",
         cms.PSet(
             regions = cms.vuint32(range(9, 18))),
     ),
-    gctEmCorrector = cms.string(""),
-    gctEmResol = cms.PSet(
-            etaBins = cms.vdouble( 0.700,  1.200,  1.600),
-            offset  = cms.vdouble( 0.873,  1.081,  1.563),
-            scale   = cms.vdouble( 0.011,  0.015,  0.012),
-            kind    = cms.string('calo'),
-    ),
-
 )
 
 
@@ -322,8 +313,7 @@ l1tLayer1HGCalElliptic = l1tLayer1HGCal.clone(
 
 l1tLayer1HGCalNoTK = cms.EDProducer("L1TCorrelatorLayer1Producer",
     muons = cms.InputTag('l1tSAMuonsGmt','prompt'),
-    emGctClusters = cms.InputTag(""),
-    emGctRawClusters = cms.InputTag(""),
+    emClusters = cms.InputTag(""),
     hadClusters = cms.InputTag("l1tHGCalBackEndLayer2Producer","HGCalBackendLayer2Processor3DClustering"),
     vtxCollection = cms.InputTag("l1tVertexFinderEmulator","L1VerticesEmulation"),
     nVtx = cms.int32(1),
@@ -421,14 +411,6 @@ l1tLayer1HGCalNoTK = cms.EDProducer("L1TCorrelatorLayer1Producer",
     boards = cms.VPSet(
         cms.PSet(regions = cms.vuint32(range(0,18))),
     ),
-    gctEmCorrector = cms.string(""),
-    gctEmResol = cms.PSet(
-            etaBins = cms.vdouble( 0.700,  1.200,  1.600),
-            offset  = cms.vdouble( 0.873,  1.081,  1.563),
-            scale   = cms.vdouble( 0.011,  0.015,  0.012),
-            kind    = cms.string('calo'),
-    ),
-
 )
 
 l1tLayer1HF = cms.EDProducer("L1TCorrelatorLayer1Producer",
@@ -500,14 +482,6 @@ l1tLayer1HF = cms.EDProducer("L1TCorrelatorLayer1Producer",
         )
     ),
     boards = cms.VPSet(),
-    gctEmCorrector = cms.string(""),
-    gctEmResol = cms.PSet(
-            etaBins = cms.vdouble( 0.700,  1.200,  1.600),
-            offset  = cms.vdouble( 0.873,  1.081,  1.563),
-            scale   = cms.vdouble( 0.011,  0.015,  0.012),
-            kind    = cms.string('calo'),
-    ),
-
 )
 
 

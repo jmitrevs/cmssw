@@ -30,8 +30,10 @@ process.load('Configuration.StandardSequences.Services_cff')
 process.load("SimGeneral.HepPDTESSource.pythiapdt_cfi")
 process.load("FWCore.MessageLogger.MessageLogger_cfi")
 process.options   = cms.untracked.PSet( wantSummary = cms.untracked.bool(True), allowUnscheduled = cms.untracked.bool(False) )
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1008))
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1))
 process.MessageLogger.cerr.FwkReport.reportEvery = 1
+process.MessageLogger.cerr.threshold = "DEBUG"
+process.MessageLogger.debugModules = ["l1tLayer1BarrelTDR"]
 
 process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring('file:inputs110X.root'),
@@ -96,7 +98,8 @@ process.l1tLayer1BarrelTDR.regionizerAlgoParameters = cms.PSet(
         nMu = cms.uint32(2),
         nClocks = cms.uint32(162),
         doSort = cms.bool(False),
-        bigRegionEdges = cms.vint32(-560, -80, 400, -560)
+        bigRegionEdges = cms.vint32(-560, -80, 400, -560),
+        debug = cms.untracked.bool(True)
     )
 process.l1tLayer1BarrelTDR.pfAlgoParameters.nTrack = 22
 process.l1tLayer1BarrelTDR.pfAlgoParameters.nSelCalo = 15
@@ -111,10 +114,6 @@ process.l1tLayer1BarrelTDR.tkEgAlgoParameters.nEMCALO_EGIN = 12
 
 
 process.l1tLayer1BarrelSerenity = process.l1tLayer1Barrel.clone()
-process.l1tLayer1BarrelSerenity.gctEmInputConversionAlgo = cms.string("Ideal")
-process.l1tLayer1BarrelSerenity.gctHadInputConversionAlgo = cms.string("Ideal")
-process.l1tLayer1BarrelSerenity.emClusters = cms.VInputTag(cms.InputTag('l1tPFClustersFromL1EGClusters:selected'))
-process.l1tLayer1BarrelSerenity.hadClusters = cms.VInputTag(cms.InputTag('l1tPFClustersFromCombinedCaloHCal:calibrated'))
 process.l1tLayer1BarrelSerenity.regionizerAlgo = "MultififoBarrel"
 process.l1tLayer1BarrelSerenity.regionizerAlgoParameters = cms.PSet(
         barrelSetup = cms.string("Full54"),
@@ -150,6 +149,7 @@ from L1Trigger.Phase2L1ParticleFlow.l1ctLayer1_patternWriters_cff import *
 from L1Trigger.Phase2L1ParticleFlow.l1ctLayer1_patternWriters_cff import _eventsPerFile
 if not args.patternFilesOFF:
     process.l1tLayer1Barrel.patternWriters = cms.untracked.VPSet(*barrelWriterConfigs)
+    # process.l1tLayer1BarrelTDR.patternWriters = cms.untracked.VPSet(*barrelInputWriterConfigsAPx, *barrelOutputWriterConfigsAPx)
     process.l1tLayer1BarrelSerenity.patternWriters = cms.untracked.VPSet(barrelSerenityVU9PPhi1Config,barrelSerenityVU13PPhi1Config)
     process.l1tLayer1HGCal.patternWriters = cms.untracked.VPSet(*hgcalWriterConfigs)
     process.l1tLayer1HGCalElliptic.patternWriters = cms.untracked.VPSet(*hgcalWriterConfigs)
