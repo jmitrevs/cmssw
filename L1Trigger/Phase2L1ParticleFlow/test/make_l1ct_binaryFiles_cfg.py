@@ -125,6 +125,9 @@ process.l1tLayer1BarrelSerenity.regionizerAlgoParameters = cms.PSet(
         nCalo = cms.uint32(15),
         nEmCalo = cms.uint32(12),
         nMu = cms.uint32(2))
+process.l1tLayer1BarrelSerenity.gctEmInputConversionAlgo = cms.string("Ideal")
+delattr(process.l1tLayer1BarrelSerenity, "gctEmInputConversionParameters")
+process.l1tLayer1BarrelSerenity.gctHadInputConversionAlgo = cms.string("Ideal")
 process.l1tLayer1BarrelSerenity.pfAlgoParameters.nTrack = 22
 process.l1tLayer1BarrelSerenity.pfAlgoParameters.nSelCalo = 15
 process.l1tLayer1BarrelSerenity.pfAlgoParameters.nCalo = 15
@@ -198,7 +201,7 @@ if not args.patternFilesOFF:
     process.l1tLayer2SeedConeJetWriter.maxLinesPerFile = _eventsPerFile*54
 
 if not args.dumpFilesOFF:
-  for det in "Barrel", "BarrelTDR", "BarrelSerenity", "HGCal", "HGCalElliptic", "HGCalNoTK", "HF":
+    for det in "Barrel", "BarrelTDR", "BarrelSerenity", "HGCal", "HGCalElliptic", "HGCalNoTK", "HF":
         l1pf = getattr(process, 'l1tLayer1'+det)
         l1pf.dumpFileName = cms.untracked.string("TTbar_PU200_"+det+".dump")
 
