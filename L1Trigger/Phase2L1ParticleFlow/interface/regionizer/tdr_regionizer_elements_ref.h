@@ -157,8 +157,13 @@ namespace l1ct {
     public:
       Buffer() : clkindex360_(INIT360), clkindex240_(INIT240), timeOfNextObject_(-1) {}
 
-      void addEntry(
-          const T& obj, std::vector<size_t> srs, int glbeta, int glbphi, int locphi, unsigned int dupNum, unsigned int ndup);
+      void addEntry(const T& obj,
+                    std::vector<size_t> srs,
+                    int glbeta,
+                    int glbphi,
+                    int locphi,
+                    unsigned int dupNum,
+                    unsigned int ndup);
 
       BufferEntry<T>& front() { return data_.front(); }
       const BufferEntry<T>& front() const { return data_.front(); }

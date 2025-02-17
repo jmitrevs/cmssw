@@ -70,7 +70,6 @@ void l1ct::TDRRegionizerEmulator::initSectorsAndRegions(const RegionizerDecodedI
     // for (auto & hadcalo : in.hadcalo) {
     //   dbgCout() << "had calo input region eta = " << hadcalo.region.hwEtaCenter << ", phi = " << hadcalo.region.hwPhiCenter << std::endl;
     // }
-
   }
 
   dbgCout() << "nBigRegions_ = " << nBigRegions_ << std::endl;
@@ -80,9 +79,9 @@ void l1ct::TDRRegionizerEmulator::initSectorsAndRegions(const RegionizerDecodedI
         netaInBR_, nphiInBR_, ntk_, bigRegionEdges_[i], bigRegionEdges_[i + 1], nclocks_, 1, false);
     // duplicate input fibers to increase to increasee the throughput, since lots of data comes in per fiber
     hadCaloRegionizers_.emplace_back(
-        netaInBR_, nphiInBR_, ncalo_, bigRegionEdges_[i], bigRegionEdges_[i + 1], nclocks_/3, 1, false);  // TM6
+        netaInBR_, nphiInBR_, ncalo_, bigRegionEdges_[i], bigRegionEdges_[i + 1], nclocks_ / 3, 1, false);  // TM6
     emCaloRegionizers_.emplace_back(
-        netaInBR_, nphiInBR_, nem_, bigRegionEdges_[i], bigRegionEdges_[i + 1], nclocks_/3, 1, false);   // TM6
+        netaInBR_, nphiInBR_, nem_, bigRegionEdges_[i], bigRegionEdges_[i + 1], nclocks_ / 3, 1, false);  // TM6
     muRegionizers_.emplace_back(
         netaInBR_, nphiInBR_, nmu_, bigRegionEdges_[i], bigRegionEdges_[i + 1], nclocks_, 1, false);
   }
