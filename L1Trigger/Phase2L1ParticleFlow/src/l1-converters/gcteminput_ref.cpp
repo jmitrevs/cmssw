@@ -4,13 +4,10 @@
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/ParameterSet/interface/ParameterSetDescription.h"
 
-
-// TODO: Currently this only works in CMSSW 
+// TODO: Currently this only works in CMSSW
 l1ct::GctEmClusterDecoderEmulator::GctEmClusterDecoderEmulator(const edm::ParameterSet &iConfig)
-  : config_(iConfig),
-  corrector_(iConfig.getParameter<std::string>("gctEmCorrector"), -1),
-  resol_(iConfig.getParameter<edm::ParameterSet>("gctEmResol")) {
-}
+    : corrector_(iConfig.getParameter<std::string>("gctEmCorrector"), -1),
+      resol_(iConfig.getParameter<edm::ParameterSet>("gctEmResol")) {}
 
 edm::ParameterSetDescription l1ct::GctEmClusterDecoderEmulator::getParameterSetDescription() {
   edm::ParameterSetDescription description;
@@ -28,14 +25,13 @@ edm::ParameterSetDescription l1ct::GctEmClusterDecoderEmulator::getParameterSetD
 l1ct::GctEmClusterDecoderEmulator::~GctEmClusterDecoderEmulator() {}
 
 l1ct::EmCaloObjEmu l1ct::GctEmClusterDecoderEmulator::decode(const l1ct::DetectorSector<l1ct::EmCaloObjEmu> &sec,
-                                                             const l1tp2::GCTEmDigiCluster &digi) const {
-
+                                                             const ap_uint<64> &in) const {
   // need to add emid
   l1ct::EmCaloObjEmu calo;
   calo.clear();
-  calo.hwPt = digi.pt() * l1ct::pt_t(0.5);  // the LSB for GCT objects
-  calo.hwEta = digi.eta() * 4;
-  calo.hwPhi = digi.phi() * 4;
+  calo.hwPt = pt(in) * l1ct::pt_t(0.5);  // the LSB for GCT objects
+  calo.hwEta = eta(in) * 4;
+  calo.hwPhi = phi(in) * 4;
 
   if (corrector_.valid()) {
     float newpt = corrector_.correctedPt(calo.floatPt(), calo.floatPt(), sec.region.floatGlbEta(calo.hwEta));
@@ -47,8 +43,7 @@ l1ct::EmCaloObjEmu l1ct::GctEmClusterDecoderEmulator::decode(const l1ct::Detecto
   // bit 0: standaloneWP: is_iso && is_ss
   // bit 1: looseL1TkMatchWP: is_looseTkiso && is_looseTkss
   // bit 2: photonWP:
-  calo.hwEmID = (digi.passes_iso() & digi.passes_ss()) | ((digi.passes_looseTkiso() & digi.passes_looseTkss()) << 1) |
-                (false << 2);
+  calo.hwEmID = (passes_iso(in) & passes_ss(in)) | ((passes_looseTkiso(in) & passes_looseTkss(in)) << 1) | (false << 2);
 
   return calo;
 }
