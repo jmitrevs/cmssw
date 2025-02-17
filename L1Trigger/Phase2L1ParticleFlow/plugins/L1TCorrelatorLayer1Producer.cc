@@ -55,7 +55,6 @@
 #include "DataFormats/L1TCalorimeterPhase2/interface/DigitizedClusterCorrelator.h"
 #include "DataFormats/L1THGCal/interface/HGCalMulticluster.h"
 
-
 // constexpr unsigned int calomapping[] = {3, 0, 9, 6, 4, 1, 10, 7, 5, 2, 11, 8};
 constexpr unsigned int calomapping[] = {9, 6, 3, 0, 10, 7, 4, 1, 11, 8, 5, 2};
 
@@ -533,7 +532,7 @@ void L1TCorrelatorLayer1Producer::produce(edm::Event &iEvent, const edm::EventSe
   }
   // ------ READ CALOS -----
 
-  // std::cout << "regionizer = " << config_.getParameter<std::string>("regionizerAlgo") 
+  // std::cout << "regionizer = " << config_.getParameter<std::string>("regionizerAlgo")
   //   << ", pfAlgo = " << config_.getParameter<std::string>("pfAlgo")
   //   << ", dumpFileName = " << config_.getUntrackedParameter<std::string>("dumpFileName")  << std::endl;
   // ensure that only raw or decoded calo information is avalable, not both
@@ -988,12 +987,16 @@ void L1TCorrelatorLayer1Producer::addMuon(const l1t::SAMuon &mu, l1t::PFCandidat
 // to reg. order:  GCT1 SLR3-, GCT2 SLR3-, GCT3 SLR3-, GCT1 SLR3+, GCT2 SLR3+, GCT3 SLR3+,
 //                 GCT1 SLR1-, GCT2 SLR1-, GCT3 SLR1-, GCT1 SLR1+, GCT2 SLR1+, GCT3 SLR1+
 
-void L1TCorrelatorLayer1Producer::addEmCaloRaw(const l1tp2::GCTEmDigiClusterLink &link, unsigned int linkidx, unsigned int entidx) {
+void L1TCorrelatorLayer1Producer::addEmCaloRaw(const l1tp2::GCTEmDigiClusterLink &link,
+                                               unsigned int linkidx,
+                                               unsigned int entidx) {
   event_.raw.gctEm[calomapping[linkidx]].obj.push_back(link[entidx].data());
   addDecodedGCTEmCalo(event_.decoded.emcalo[calomapping[linkidx]], link[entidx]);
 }
 
-void L1TCorrelatorLayer1Producer::addHadCaloRaw(const l1tp2::GCTHadDigiClusterLink &link, unsigned int linkidx, unsigned int entidx) {
+void L1TCorrelatorLayer1Producer::addHadCaloRaw(const l1tp2::GCTHadDigiClusterLink &link,
+                                                unsigned int linkidx,
+                                                unsigned int entidx) {
   event_.raw.gctHad[calomapping[linkidx]].obj.push_back(link[entidx].data());
   addDecodedGCTHadCalo(event_.decoded.hadcalo[calomapping[linkidx]], link[entidx]);
 }
@@ -1072,7 +1075,6 @@ void L1TCorrelatorLayer1Producer::addDecodedGCTHadCalo(l1ct::DetectorSector<l1ct
   calo.src = caloPtr.get();
   sec.obj.push_back(calo);
 }
-
 
 template <typename T>
 void L1TCorrelatorLayer1Producer::setRefs_(l1t::PFCandidate &pf, const T &p) const {

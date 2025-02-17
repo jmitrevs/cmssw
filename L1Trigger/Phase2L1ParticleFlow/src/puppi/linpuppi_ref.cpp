@@ -178,9 +178,9 @@ edm::ParameterSetDescription l1ct::LinPuppiEmulator::getParameterSetDescription(
   description.add<std::vector<double>>("priors");
   description.add<std::vector<double>>("priorsPhoton");
   description.add<uint32_t>("nFinalSort");
-  description.ifValue(
-      edm::ParameterDescription<std::string>("finalSortAlgo", "Insertion", true),
-      edm::allowedValues<std::string>("Insertion", "BitonicRUFL", "BitonicHLS", "Hybrid", "FoldedHybrid", "BitonicVHDL"));
+  description.ifValue(edm::ParameterDescription<std::string>("finalSortAlgo", "Insertion", true),
+                      edm::allowedValues<std::string>(
+                          "Insertion", "BitonicRUFL", "BitonicHLS", "Hybrid", "FoldedHybrid", "BitonicVHDL"));
   description.add<bool>("fakePuppi", false);
   description.addUntracked<bool>("debug", false);
   return description;
@@ -225,15 +225,15 @@ void l1ct::LinPuppiEmulator::puppisort_and_crop_ref(unsigned int nOutMax,
       nextpo2 <<= 1;
     }
     std::vector<l1ct::PuppiObjEmu> inPadded(nextpo2);
-    for (unsigned int i=0; i < in.size(); i++) {
+    for (unsigned int i = 0; i < in.size(); i++) {
       inPadded[i] = in[i];
     }
-    for (unsigned int i=in.size(); i < nextpo2; i++) {
+    for (unsigned int i = in.size(); i < nextpo2; i++) {
       inPadded[i].clear();
     }
     std::vector<l1ct::PuppiObjEmu> outPadded(nextpo2);
     bitonic_sort_and_crop_ref(nextpo2, nextpo2, inPadded.data(), outPadded.data());
-    for (unsigned int i=0; i < nOut; i++) {
+    for (unsigned int i = 0; i < nOut; i++) {
       out[i] = outPadded[i];
     }
   }

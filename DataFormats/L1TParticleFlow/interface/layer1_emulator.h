@@ -258,7 +258,7 @@ namespace l1ct {
     DetectorSector<ap_uint<64>> muon;  // muons are global
     std::vector<DetectorSector<ap_uint<256>>> hgcalcluster;
     std::vector<DetectorSector<ap_uint<64>>> gctHad;  // the 48 hadronic clusters from the GCT
-    std::vector<DetectorSector<ap_uint<64>>> gctEm;  // the 36 EM clusters from the GCT
+    std::vector<DetectorSector<ap_uint<64>>> gctEm;   // the 36 EM clusters from the GCT
     // (The trigger towers that follow the clusters are not included in the above data)
 
     bool read(std::fstream &from);

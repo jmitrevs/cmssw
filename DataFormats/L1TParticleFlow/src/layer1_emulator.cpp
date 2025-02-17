@@ -229,7 +229,6 @@ void l1ct::RawInputs::clear() {
     h.clear();
   for (auto& h : gctEm)
     h.clear();
-
 }
 
 bool l1ct::RegionizerDecodedInputs::read(std::fstream& from) {
