@@ -1,5 +1,6 @@
 #include "L1Trigger/Phase2L1ParticleFlow/interface/L1TCorrelatorLayer1PatternFileWriter.h"
 #include "L1Trigger/Phase2L1ParticleFlow/interface/regionizer/middle_buffer_multififo_regionizer_ref.h"
+#include "L1Trigger/Phase2L1ParticleFlow/interface/dbgPrintf.h"
 #include "FWCore/Utilities/interface/Exception.h"
 #include "FWCore/ParameterSet/interface/allowedValues.h"
 #include <iostream>
@@ -12,7 +13,8 @@ L1TCorrelatorLayer1PatternFileWriter::L1TCorrelatorLayer1PatternFileWriter(const
       writeOutputs_(!iConfig.getParameter<std::string>("outputFileName").empty()),
       tfTimeslices_(std::max(1u, tfTmuxFactor_ / tmuxFactor_)),
       hgcTimeslices_(std::max(1u, hgcTmuxFactor_ / tmuxFactor_)),
-      gctTimeslices_(std::max(1u, gctTmuxFactor_ / tmuxFactor_)),
+      gctEmTimeslices_(std::max(1u, gctEmTmuxFactor_ / tmuxFactor_)),
+      gctHadTimeslices_(std::max(1u, gctHadTmuxFactor_ / tmuxFactor_)),
       gmtTimeslices_(std::max(1u, gmtTmuxFactor_ / tmuxFactor_)),
       gttTimeslices_(std::max(1u, gttTmuxFactor_ / tmuxFactor_)),
       outputBoard_(-1),
@@ -20,6 +22,11 @@ L1TCorrelatorLayer1PatternFileWriter::L1TCorrelatorLayer1PatternFileWriter(const
       fileFormat_(iConfig.getParameter<std::string>("fileFormat")),
       eventsPerFile_(iConfig.getParameter<uint32_t>("eventsPerFile")),
       eventIndex_(0) {
+  std::cout << "In L1TCorrelatorLayer1PatternFileWrite, fileFormat_ = " << fileFormat_ << ", partition = " << iConfig.getParameter<std::string>("partition") 
+      << ", writeInputs_= " << writeInputs_ << ", writeOutputs_= " << writeOutputs_ 
+      << ", nInputFramesPerBX = " << iConfig.getParameter<uint32_t>("nInputFramesPerBX") << std::endl;
+  std::cout << "tfTimeslices_ = " << tfTimeslices_ << ", gctEmTimeslices_ = " 
+      << gctEmTimeslices_ << ", gctHadTimeslices_ = " << gctHadTimeslices_ << ", gttTimeslices_ = " << gttTimeslices_ << ", gmtTimeslices_ = " << gmtTimeslices_ << std::endl;
   if (writeInputs_) {
     nInputFramesPerBX_ = iConfig.getParameter<uint32_t>("nInputFramesPerBX");
 
@@ -28,37 +35,10 @@ L1TCorrelatorLayer1PatternFileWriter::L1TCorrelatorLayer1PatternFileWriter(const
       channelSpecsInput_["tf"] = {tfTmuxFactor_, tfTimeslices_};
     }
     if (partition_ == Partition::Barrel) {
-      auto sectorConfig = iConfig.getParameter<std::vector<edm::ParameterSet>>("gctSectors");
-      gctLinksEcal_ = iConfig.getParameter<uint32_t>("gctNLinksEcal");
-      gctLinksHad_ = iConfig.getParameter<uint32_t>("gctNLinksHad");
-      gctSingleLink_ = false;
-      bool gctHasMultiLink = false;
-      if (sectorConfig.size() != gctSectors_)
-        throw cms::Exception("Configuration", "Bad number of GCT sectors");
-      for (unsigned int iS = 0; iS < gctSectors_; ++iS) {
-        auto linksEcal = sectorConfig[iS].getParameter<std::vector<int32_t>>("gctLinksEcal");
-        auto linksHad = sectorConfig[iS].getParameter<std::vector<int32_t>>("gctLinksHad");
-        if (linksEcal.size() != gctLinksEcal_ || linksHad.size() != gctLinksHad_)
-          throw cms::Exception("Configuration", "Bad number of GCT links");
-        unsigned int iLink = 0;
-        if (!(gctLinksEcal_ == 1 && gctLinksHad_ == 1 && linksEcal[0] == linksHad[0] && linksEcal[0] != -1)) {
-          for (unsigned int i = 0; i < gctLinksHad_; ++i, ++iLink) {
-            if (linksHad[i] != -1)
-              channelIdsInput_[l1t::demo::LinkId{"gct", iLink + 10 * iS}].push_back(linksHad[i]);
-          }
-          for (unsigned int i = 0; i < gctLinksEcal_; ++i) {
-            if (linksEcal[i] != -1)
-              channelIdsInput_[l1t::demo::LinkId{"gct", iLink + 10 * iS}].push_back(linksEcal[i]);
-          }
-          gctHasMultiLink = true;
-        } else {  // single link combining ecal and hcal
-          channelIdsInput_[l1t::demo::LinkId{"gct", 10 * iS}].push_back(linksEcal[0]);
-          gctSingleLink_ = true;
-        }
-        channelSpecsInput_["gct"] = {tmuxFactor_ * gctTimeslices_, 0};
-      }
-      if (gctSingleLink_ && gctHasMultiLink)
-        throw cms::Exception("Configuration", "Some GCT sectors have a single link, others have multiple.");
+      configTimeSlices(iConfig, "gctEm", eventTemplate.raw.gctEm.size(), gctEmTimeslices_, gctEmLinksFactor_);
+      channelSpecsInput_["gctEm"] = {tmuxFactor_ * gctEmTimeslices_, gctEmTimeslices_};
+      configTimeSlices(iConfig, "gctHad", eventTemplate.raw.gctHad.size(), gctHadTimeslices_, gctHadLinksFactor_);
+      channelSpecsInput_["gctHad"] = {tmuxFactor_ * gctHadTimeslices_, gctHadTimeslices_};
     }
     if (partition_ == Partition::HGCal || partition_ == Partition::HGCalNoTk) {
       configTimeSlices(iConfig, "hgc", eventTemplate.raw.hgcalcluster.size(), hgcTimeslices_, hgcLinksFactor_);
@@ -142,7 +122,7 @@ edm::ParameterSetDescription L1TCorrelatorLayer1PatternFileWriter::getParameterS
   description.add<std::string>("fileFormat");
 
   description.ifValue(edm::ParameterDescription<std::string>("partition", "Barrel", true),
-                      "Barrel" >> (describeTF() and describeGCT() and describeGTT() and describeGMT() and
+                      "Barrel" >> (describeTF() and describeGCTEm() and describeGCTHad() and describeGTT() and describeGMT() and
                                    describePuppi() and describeEG()) or
                           "HGCal" >> (describeTF() and describeHGC() and describeGTT() and describeGMT() and
                                       describePuppi() and describeEG()) or
@@ -154,14 +134,11 @@ edm::ParameterSetDescription L1TCorrelatorLayer1PatternFileWriter::getParameterS
 std::unique_ptr<edm::ParameterDescriptionNode> L1TCorrelatorLayer1PatternFileWriter::describeTF() {
   return describeTimeSlices("tf");
 }
-std::unique_ptr<edm::ParameterDescriptionNode> L1TCorrelatorLayer1PatternFileWriter::describeGCT() {
-  edm::ParameterSetDescription gctSectorPSD;
-  gctSectorPSD.add<std::vector<int32_t>>("gctLinksEcal");
-  gctSectorPSD.add<std::vector<int32_t>>("gctLinksHad");
-  return std::make_unique<edm::ParameterDescription<std::vector<edm::ParameterSet>>>(
-             "gctSectors", gctSectorPSD, true) and
-         edm::ParameterDescription<uint32_t>("gctNLinksEcal", 1, true) and
-         edm::ParameterDescription<uint32_t>("gctNLinksHad", 2, true);
+std::unique_ptr<edm::ParameterDescriptionNode> L1TCorrelatorLayer1PatternFileWriter::describeGCTEm() {
+  return describeTimeSlices("gctEm");
+}
+std::unique_ptr<edm::ParameterDescriptionNode> L1TCorrelatorLayer1PatternFileWriter::describeGCTHad() {
+  return describeTimeSlices("gctHad");
 }
 std::unique_ptr<edm::ParameterDescriptionNode> L1TCorrelatorLayer1PatternFileWriter::describeHGC() {
   return describeTimeSlices("hgc");
@@ -191,7 +168,8 @@ void L1TCorrelatorLayer1PatternFileWriter::write(const l1ct::Event& event) {
       writeTF(event, inputs);
     }
     if (partition_ == Partition::Barrel) {
-      writeBarrelGCT(event, inputs);
+      writeGCTEm(event, inputs);
+      writeGCTHad(event, inputs);
     }
     if (partition_ == Partition::HGCal || partition_ == Partition::HGCalNoTk) {
       writeHGC(event, inputs);
@@ -338,6 +316,27 @@ void L1TCorrelatorLayer1PatternFileWriter::writeTF(const l1ct::Event& event, l1t
   }
 }
 
+void L1TCorrelatorLayer1PatternFileWriter::writeGCTEm(const l1ct::Event& event, l1t::demo::EventData& out) {
+  for (unsigned int iS = 0, nS = event.raw.gctEm.size(); iS < nS; ++iS) {
+    l1t::demo::LinkId key{"gctEm", iS};
+    if (channelIdsInput_.count(key) == 0)
+      continue;
+    std::vector<ap_uint<64>> gctEm = event.raw.gctEm[iS].obj;
+    out.add(key, gctEm);
+  }
+}
+
+void L1TCorrelatorLayer1PatternFileWriter::writeGCTHad(const l1ct::Event& event, l1t::demo::EventData& out) {
+  for (unsigned int iS = 0, nS = event.raw.gctHad.size(); iS < nS; ++iS) {
+    l1t::demo::LinkId key{"gctHad", iS};
+    if (channelIdsInput_.count(key) == 0)
+      continue;
+    std::vector<ap_uint<64>> gctHad = event.raw.gctHad[iS].obj;
+    out.add(key, gctHad);
+  }
+}
+
+
 void L1TCorrelatorLayer1PatternFileWriter::writeHGC(const l1ct::Event& event, l1t::demo::EventData& out) {
   assert(hgcLinksFactor_ == 4);  // this piece of code won't really work otherwise
   std::vector<ap_uint<64>> ret[hgcLinksFactor_];
@@ -366,56 +365,6 @@ void L1TCorrelatorLayer1PatternFileWriter::writeHGC(const l1ct::Event& event, l1
     }
     for (unsigned int il = 0; il < hgcLinksFactor_; ++il) {
       out.add(l1t::demo::LinkId{"hgc", iS * 10 + il}, ret[il]);
-    }
-  }
-}
-
-void L1TCorrelatorLayer1PatternFileWriter::writeBarrelGCT(const l1ct::Event& event, l1t::demo::EventData& out) {
-  std::vector<ap_uint<64>> ret;
-  for (unsigned int iS = 0; iS < gctSectors_; ++iS) {
-    l1t::demo::LinkId key0{"gct", iS * 10};
-    if (channelIdsInput_.count(key0) == 0)
-      continue;
-    const auto& had = event.decoded.hadcalo[iS];
-    const auto& ecal = event.decoded.emcalo[iS];
-    if (!gctSingleLink_) {
-      unsigned int iLink = 0, nHad = had.size(), nEcal = ecal.size();
-      for (unsigned int i = 0; i < gctLinksHad_; ++i, ++iLink) {
-        ret.clear();
-        for (unsigned int iHad = i; iHad < nHad; iHad += gctLinksHad_) {
-          ret.emplace_back(had[iHad].pack_barrel());
-        }
-        if (ret.empty())
-          ret.emplace_back(0);
-        out.add(l1t::demo::LinkId{"gct", iS * 10 + iLink}, ret);
-      }
-      for (unsigned int i = 0; i < gctLinksEcal_; ++i, ++iLink) {
-        ret.clear();
-        for (unsigned int iEcal = i; iEcal < nEcal; iEcal += gctLinksEcal_) {
-          ret.emplace_back(ecal[iEcal].pack_barrel());
-        }
-        if (ret.empty())
-          ret.emplace_back(0);
-        out.add(l1t::demo::LinkId{"gct", iS * 10 + iLink}, ret);
-      }
-    } else {
-      const unsigned int NCLK_EM = 54, NCLK_TOT = 3 * NCLK_EM;
-      l1ct::HadCaloObjEmu tmp;
-      ret.resize(std::min(NCLK_EM + had.size(), NCLK_TOT));
-      for (unsigned int iclock = 0, nem = ecal.size(); iclock < NCLK_EM; ++iclock) {
-        if (iclock < nem) {
-          l1ct::MiddleBufferMultififoRegionizerEmulator::encode(ecal[iclock], tmp);
-          ret[iclock] = tmp.pack_barrel();
-        } else {
-          ret[iclock] = 0;
-        }
-      }
-      for (unsigned int ihad = 0, iclock = NCLK_EM, nhad = had.size(); iclock < NCLK_TOT && ihad < nhad;
-           ++iclock, ++ihad) {
-        l1ct::MiddleBufferMultififoRegionizerEmulator::encode(had[ihad], tmp);
-        ret[iclock] = tmp.pack_barrel();
-      }
-      out.add(l1t::demo::LinkId{"gct", iS * 10}, ret);
     }
   }
 }
