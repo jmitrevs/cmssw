@@ -69,16 +69,42 @@ barrelSerenityVU13PPhi1Config = barrelSerenityPhi1Config.clone(
 barrelApxWriterConfig = [
     _barrelWriterOutputOnly.clone(
         fileFormat = cms.string("APx"),
-        gttLink = cms.int32(4*25+3),
+        gttLink = cms.int32(123),
         gttLatency = cms.uint32(50),
         gttNumberOfPVs = cms.uint32(1),
-        gmtTimeSlices = cms.VPSet(*[cms.PSet(gmtLink = cms.int32(ip*2+t)) for t in range(3)]),
+        gmtTimeSlices = cms.VPSet(*[cms.PSet(gmtLink = cms.int32(38*t+10)) for t in range(3)]),
         gctEmSectors = cms.VPSet(*[ cms.PSet(gctEmLink = cms.int32(-1)) for s in range(12) ]),
         gctHadSectors = cms.VPSet(*[ cms.PSet(gctHadLink = cms.int32(-1)) for s in range(12) ]),
         inputFileName = cms.string("l1BarrelApxPhi%d-inputs" % (ip+1)),
         tfTimeSlices = cms.VPSet(*[cms.PSet(tfSectors = cms.VPSet(*[ cms.PSet(tfLink = cms.int32(-1)) for s in range(18) ])) for t in range(3)]),
     ) for ip in range(3)
 ]
+
+# Set GCT link numbers
+for iBigRegion, ilink in enumerate((2, 0, 1)):
+    barrelApxWriterConfig[iBigRegion].gctEmSectors[ilink].gctEmLink = 119
+    barrelApxWriterConfig[iBigRegion].gctEmSectors[ilink+6].gctEmLink = 120
+    barrelApxWriterConfig[iBigRegion].gctEmSectors[ilink+3].gctEmLink = 121
+    barrelApxWriterConfig[iBigRegion].gctEmSectors[ilink+9].gctEmLink = 122
+    barrelApxWriterConfig[iBigRegion].gctHadSectors[ilink].gctHadLink = 115
+    barrelApxWriterConfig[iBigRegion].gctHadSectors[ilink+6].gctHadLink = 116
+    barrelApxWriterConfig[iBigRegion].gctHadSectors[ilink+3].gctHadLink = 117
+    barrelApxWriterConfig[iBigRegion].gctHadSectors[ilink+9].gctHadLink = 118
+
+# Set tracking link numbers
+for timeSlice in range(3):
+    for iBigRegion, ilink in enumerate((5, 8, 2)):
+        barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[ilink].tfLink = 0 + timeSlice * 38
+        barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[(ilink+1)%9].tfLink = 1 + timeSlice * 38
+        barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[(ilink+2)%9].tfLink = 2 + timeSlice * 38
+        barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[(ilink+3)%9].tfLink = 3 + timeSlice * 38
+        barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[(ilink+4)%9].tfLink = 4 + timeSlice * 38
+        barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[8 + ilink].tfLink = 5 + timeSlice * 38
+        barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[8 + (ilink+1)%9].tfLink = 6 + timeSlice * 38
+        barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[8 + (ilink+2)%9].tfLink = 7 + timeSlice * 38
+        barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[8 + (ilink+3)%9].tfLink = 8 + timeSlice * 38
+        barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[8 + (ilink+4)%9].tfLink = 9 + timeSlice * 38
+
 
 for t in range(3):
    for ie in range(2):

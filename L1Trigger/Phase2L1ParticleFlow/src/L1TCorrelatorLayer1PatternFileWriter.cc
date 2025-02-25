@@ -22,11 +22,11 @@ L1TCorrelatorLayer1PatternFileWriter::L1TCorrelatorLayer1PatternFileWriter(const
       fileFormat_(iConfig.getParameter<std::string>("fileFormat")),
       eventsPerFile_(iConfig.getParameter<uint32_t>("eventsPerFile")),
       eventIndex_(0) {
-  std::cout << "In L1TCorrelatorLayer1PatternFileWrite, fileFormat_ = " << fileFormat_ << ", partition = " << iConfig.getParameter<std::string>("partition") 
-      << ", writeInputs_= " << writeInputs_ << ", writeOutputs_= " << writeOutputs_ 
-      << ", nInputFramesPerBX = " << iConfig.getParameter<uint32_t>("nInputFramesPerBX") << std::endl;
-  std::cout << "tfTimeslices_ = " << tfTimeslices_ << ", gctEmTimeslices_ = " 
-      << gctEmTimeslices_ << ", gctHadTimeslices_ = " << gctHadTimeslices_ << ", gttTimeslices_ = " << gttTimeslices_ << ", gmtTimeslices_ = " << gmtTimeslices_ << std::endl;
+  // std::cout << "In L1TCorrelatorLayer1PatternFileWrite, fileFormat_ = " << fileFormat_ << ", partition = " << iConfig.getParameter<std::string>("partition") 
+  //     << ", writeInputs_= " << writeInputs_ << ", writeOutputs_= " << writeOutputs_ 
+  //     << ", nInputFramesPerBX = " << iConfig.getParameter<uint32_t>("nInputFramesPerBX") << std::endl;
+  // std::cout << "tfTimeslices_ = " << tfTimeslices_ << ", gctEmTimeslices_ = " 
+  //     << gctEmTimeslices_ << ", gctHadTimeslices_ = " << gctHadTimeslices_ << ", gttTimeslices_ = " << gttTimeslices_ << ", gmtTimeslices_ = " << gmtTimeslices_ << std::endl;
   if (writeInputs_) {
     nInputFramesPerBX_ = iConfig.getParameter<uint32_t>("nInputFramesPerBX");
 
