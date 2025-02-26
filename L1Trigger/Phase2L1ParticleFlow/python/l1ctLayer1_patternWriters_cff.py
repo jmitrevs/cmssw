@@ -38,11 +38,19 @@ barrelWriterOutputOnlyPhiConfigs = [
     ) for ip in range(3)
 ]
 
+def _sortApxRegions(etaPhiSortedRegions):
+    """Returns the APx output order for a tuple/list of regions (ints)
+    """
+    apxOrder = (0, 4, 2, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16, 15, 1, 17, 3)
+    if len(etaPhiSortedRegions) != len(apxOrder):
+        raise RuntimeError(f"Unexptected number of regions passed: {len(etaPhiSortedRegions)}")
+    return [etaPhiSortedRegions[apxOrder[i]] for i in range(len(apxOrder))]
+
 ## Barrel (54) split in 3 phi slices (APx format)
 barrelWriterOutputOnlyPhiConfigsAPx = [
     _barrelWriterOutputOnly.clone(
         fileFormat = cms.string("APx"),
-        outputRegions = cms.vuint32(*[3*ip+9*ie+i for ie in range(6) for i in range(3) ]),
+        outputRegions = cms.vuint32(*_sortApxRegions([3*ip+9*ie+i for ie in range(6) for i in range(3) ])),
         outputBoard = cms.int32(ip),
         outputFileName = cms.string("l1BarrelApxPhi%d-outputs" % (ip+1))
     ) for ip in range(3)
@@ -159,10 +167,10 @@ _hgcalNegWriterConfig = _hgcalPosWriterConfig.clone(
     outputBoard = 0,
 )
 hgcalPosOutputWriterConfig = _hgcalPosWriterConfig.clone(
-   outputFileName = cms.string("l1HGCalPos-outputs") 
+   outputFileName = cms.string("l1HGCalPos-outputs")
 )
 hgcalNegOutputWriterConfig = _hgcalNegWriterConfig.clone(
-   outputFileName = cms.string("l1HGCalNeg-outputs") 
+   outputFileName = cms.string("l1HGCalNeg-outputs")
 )
 ## Current configurations for VU9P
 hgcalPosVU9PWriterConfig = _hgcalPosWriterConfig.clone()
@@ -185,9 +193,9 @@ for t in range(3):
     hgcalNegVU9PWriterConfig.gmtTimeSlices[t].gmtLink = cms.int32(4*15+((t+2)%3))
 hgcalPosVU9PWriterConfig.gttLink = 4*14+0
 hgcalNegVU9PWriterConfig.gttLink = 4*14+0
-hgcalPosVU9PWriterConfig.inputFileName = cms.string("l1HGCalPos-inputs-vu9p") 
-hgcalNegVU9PWriterConfig.inputFileName = cms.string("l1HGCalNeg-inputs-vu9p") 
-## Current configurations for VU13P 
+hgcalPosVU9PWriterConfig.inputFileName = cms.string("l1HGCalPos-inputs-vu9p")
+hgcalNegVU9PWriterConfig.inputFileName = cms.string("l1HGCalNeg-inputs-vu9p")
+## Current configurations for VU13P
 hgcalPosVU13PWriterConfig = _hgcalPosWriterConfig.clone()
 hgcalNegVU13PWriterConfig = _hgcalNegWriterConfig.clone()
 for t in range(3):
@@ -206,13 +214,13 @@ for t in range(3):
     hgcalNegVU13PWriterConfig.gmtTimeSlices[t].gmtLink = cms.int32(4*18+t)
 hgcalPosVU13PWriterConfig.gttLink = 4*25+3
 hgcalNegVU13PWriterConfig.gttLink = 4*25+3
-hgcalPosVU13PWriterConfig.inputFileName = cms.string("l1HGCalPos-inputs-vu13p") 
-hgcalNegVU13PWriterConfig.inputFileName = cms.string("l1HGCalNeg-inputs-vu13p") 
+hgcalPosVU13PWriterConfig.inputFileName = cms.string("l1HGCalPos-inputs-vu13p")
+hgcalNegVU13PWriterConfig.inputFileName = cms.string("l1HGCalNeg-inputs-vu13p")
 
 ## Enable outputs and both boards
-hgcalWriterConfigs = [ 
-    hgcalPosOutputWriterConfig, 
-    hgcalNegOutputWriterConfig, 
+hgcalWriterConfigs = [
+    hgcalPosOutputWriterConfig,
+    hgcalNegOutputWriterConfig,
     hgcalPosVU9PWriterConfig,
     hgcalNegVU9PWriterConfig,
     hgcalPosVU13PWriterConfig,
@@ -251,7 +259,7 @@ for t in range(3):
         hgcalNoTKVU13PWriterConfig.hgcTimeSlices[t].hgcSectors += [ cms.PSet(hgcLinks = cms.vint32(*[4*q0+4*t+j for j in range(4)])) ]
 hgcalNoTKVU13PWriterConfig.inputFileName = cms.string("l1HGCalNoTK-inputs-vu13p") # vu9p uses the same cabling for now
 
-hgcalNoTKWriterConfigs = [ 
+hgcalNoTKWriterConfigs = [
     hgcalNoTKOutputWriterConfig,
     hgcalNoTKVU13PWriterConfig
 ]
@@ -285,7 +293,7 @@ barrelSerenityVU13PTM18WriterConfig = _barrelSerenityTM18.clone(
 )
 for ie in range(2):
     for iphi in range(9):
-        isec = 9*ie+iphi 
+        isec = 9*ie+iphi
         barrelSerenityVU13PTM18WriterConfig.tfSectors[isec].tfLink = (isec if isec < 12 else (4*30+(isec-12)))
 
 barrelSerenityTM18WriterConfigs = [
