@@ -56,6 +56,31 @@ barrelWriterOutputOnlyPhiConfigsAPx = [
     ) for ip in range(3)
 ]
 
+barrelWriterDebugPFInConfigsAPx = [
+    _barrelWriterOutputOnly.clone(
+        fileFormat = cms.string("APx"),
+        outputRegions = cms.vuint32(*_sortApxRegions([3*ip+9*ie+i for ie in range(6) for i in range(3) ])),
+        outputBoard = cms.int32(ip),
+        nPFInTrack = cms.uint32(22),
+        nPFInEmCalo = cms.uint32(12),
+        nPFInHadCalo = cms.uint32(15),
+        nPFInMuon = cms.uint32(2),
+        debugFileName = cms.string("l1BarrelApxPhi%d-pfin" % (ip+1))
+    ) for ip in range(3)
+]
+
+barrelWriterDebugPFOutConfigsAPx = [
+    _barrelWriterOutputOnly.clone(
+        fileFormat = cms.string("APx"),
+        outputRegions = cms.vuint32(*_sortApxRegions([3*ip+9*ie+i for ie in range(6) for i in range(3) ])),
+        outputBoard = cms.int32(ip),
+        nPFOutCharged = cms.uint32(22),
+        nPFOutPhoton = cms.uint32(12),
+        nPFOutNeutral = cms.uint32(15),
+        nPFOutMuon = cms.uint32(2),
+        debugFileName = cms.string("l1BarrelApxPhi%d-pfout" % (ip+1))
+    ) for ip in range(3)
+]
 
 barrelSerenityPhi1Config = barrelWriterOutputOnlyPhiConfigs[0].clone(
     tfTimeSlices = cms.VPSet(*[cms.PSet(tfSectors = cms.VPSet(*[ cms.PSet(tfLink = cms.int32(-1)) for s in range(18) ])) for t in range(3)]),

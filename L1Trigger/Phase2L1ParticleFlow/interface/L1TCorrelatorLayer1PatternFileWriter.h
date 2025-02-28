@@ -23,7 +23,7 @@ private:
 
   Partition partition_;
   const unsigned int tmuxFactor_;
-  bool writeInputs_, writeOutputs_;
+  bool writeInputs_, writeOutputs_, writeDebugs_;
   std::map<l1t::demo::LinkId, std::vector<size_t>> channelIdsInput_, channelIdsOutput_;
   std::map<std::string, l1t::demo::ChannelSpec> channelSpecsInput_, channelSpecsOutput_;
 
@@ -45,6 +45,16 @@ private:
   int32_t outputBoard_, outputLinkEgamma_;
   uint32_t nEgammaObjectsOut_;
 
+  // for debug
+  const uint32_t nPFInTrack_;
+  const uint32_t nPFInEmCalo_;
+  const uint32_t nPFInHadCalo_;
+  const uint32_t nPFInMuon_;
+  const uint32_t nPFOutCharged_;
+  const uint32_t nPFOutPhoton_;
+  const uint32_t nPFOutNeutral_;
+  const uint32_t nPFOutMuon_;
+
   // Common stuff related to the format
   uint32_t nInputFramesPerBX_, nOutputFramesPerBX_;
   const std::string fileFormat_;
@@ -52,7 +62,7 @@ private:
   // final helper
   const uint32_t eventsPerFile_;
   uint32_t eventIndex_;
-  std::unique_ptr<l1t::demo::BoardDataWriter> inputFileWriter_, outputFileWriter_;
+  std::unique_ptr<l1t::demo::BoardDataWriter> inputFileWriter_, outputFileWriter_, debugFileWriter_;
 
   static Partition parsePartition(const std::string& partition);
 
@@ -91,6 +101,7 @@ private:
   void writePuppi(const l1ct::Event& event, l1t::demo::EventData& out);
   void writeEgamma(const l1ct::OutputBoard& egboard, std::vector<ap_uint<64>>& out);
   void writeEgamma(const l1ct::Event& event, l1t::demo::EventData& out);
+  void writeDebugs(const l1ct::Event& event, l1t::demo::EventData& out);
 };
 
 #endif

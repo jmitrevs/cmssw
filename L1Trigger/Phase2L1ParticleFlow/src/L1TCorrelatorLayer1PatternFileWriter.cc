@@ -11,6 +11,7 @@ L1TCorrelatorLayer1PatternFileWriter::L1TCorrelatorLayer1PatternFileWriter(const
       tmuxFactor_(iConfig.getParameter<uint32_t>("tmuxFactor")),
       writeInputs_(!iConfig.getParameter<std::string>("inputFileName").empty()),
       writeOutputs_(!iConfig.getParameter<std::string>("outputFileName").empty()),
+      writeDebugs_(!iConfig.getParameter<std::string>("debugFileName").empty()),
       tfTimeslices_(std::max(1u, tfTmuxFactor_ / tmuxFactor_)),
       hgcTimeslices_(std::max(1u, hgcTmuxFactor_ / tmuxFactor_)),
       gctEmTimeslices_(std::max(1u, gctEmTmuxFactor_ / tmuxFactor_)),
@@ -19,14 +20,18 @@ L1TCorrelatorLayer1PatternFileWriter::L1TCorrelatorLayer1PatternFileWriter(const
       gttTimeslices_(std::max(1u, gttTmuxFactor_ / tmuxFactor_)),
       outputBoard_(-1),
       outputLinkEgamma_(-1),
+      nPFInTrack_(iConfig.getParameter<uint32_t>("nPFInTrack")),  // these are only for debugging
+      nPFInEmCalo_(iConfig.getParameter<uint32_t>("nPFInEmCalo")),
+      nPFInHadCalo_(iConfig.getParameter<uint32_t>("nPFInHadCalo")),
+      nPFInMuon_(iConfig.getParameter<uint32_t>("nPFInMuon")),
+      nPFOutCharged_(iConfig.getParameter<uint32_t>("nPFOutCharged")),  // these are only for debugging
+      nPFOutPhoton_(iConfig.getParameter<uint32_t>("nPFOutPhoton")),
+      nPFOutNeutral_(iConfig.getParameter<uint32_t>("nPFOutNeutral")),
+      nPFOutMuon_(iConfig.getParameter<uint32_t>("nPFOutMuon")),
       fileFormat_(iConfig.getParameter<std::string>("fileFormat")),
       eventsPerFile_(iConfig.getParameter<uint32_t>("eventsPerFile")),
       eventIndex_(0) {
-  // std::cout << "In L1TCorrelatorLayer1PatternFileWrite, fileFormat_ = " << fileFormat_ << ", partition = " << iConfig.getParameter<std::string>("partition") 
-  //     << ", writeInputs_= " << writeInputs_ << ", writeOutputs_= " << writeOutputs_ 
-  //     << ", nInputFramesPerBX = " << iConfig.getParameter<uint32_t>("nInputFramesPerBX") << std::endl;
-  // std::cout << "tfTimeslices_ = " << tfTimeslices_ << ", gctEmTimeslices_ = " 
-  //     << gctEmTimeslices_ << ", gctHadTimeslices_ = " << gctHadTimeslices_ << ", gttTimeslices_ = " << gttTimeslices_ << ", gmtTimeslices_ = " << gmtTimeslices_ << std::endl;
+
   if (writeInputs_) {
     nInputFramesPerBX_ = iConfig.getParameter<uint32_t>("nInputFramesPerBX");
 
@@ -103,6 +108,59 @@ L1TCorrelatorLayer1PatternFileWriter::L1TCorrelatorLayer1PatternFileWriter(const
                                                      channelIdsOutput_,
                                                      channelSpecsOutput_);
   }
+
+  if (writeDebugs_) {
+    // ouput internal signals for easier debugging
+    nOutputFramesPerBX_ = iConfig.getParameter<uint32_t>("nOutputFramesPerBX");
+
+    // Note:  the writers have a width of 64 very much hardcoded in the sizes. Therefore, send the 72 bits as
+    //        two separate "fibers"
+    outputRegions_ = iConfig.getParameter<std::vector<uint32_t>>("outputRegions");
+    int linkCount = 0;
+    for (unsigned int i = 0; i < nPFInTrack_ * 2; ++i) {
+      channelIdsOutput_[l1t::demo::LinkId{"pfin_track", i}].push_back(linkCount++);
+    }
+    for (unsigned int i = 0; i < nPFInEmCalo_ * 2; ++i) {
+      channelIdsOutput_[l1t::demo::LinkId{"pfin_emcalo", i}].push_back(linkCount++);
+    }
+    for (unsigned int i = 0; i < nPFInHadCalo_ * 2; ++i) {
+      channelIdsOutput_[l1t::demo::LinkId{"pfin_hadcalo", i}].push_back(linkCount++);
+    }
+    for (unsigned int i = 0; i < nPFInMuon_ * 2; ++i) {
+      channelIdsOutput_[l1t::demo::LinkId{"pfin_muon", i}].push_back(linkCount++);
+    }
+    for (unsigned int i = 0; i < nPFOutCharged_ * 2; ++i) {
+      channelIdsOutput_[l1t::demo::LinkId{"pfout_charged", i}].push_back(linkCount++);
+    }
+    for (unsigned int i = 0; i < nPFOutPhoton_ * 2; ++i) {
+      channelIdsOutput_[l1t::demo::LinkId{"pfout_photon", i}].push_back(linkCount++);
+    }
+    for (unsigned int i = 0; i < nPFOutNeutral_ * 2; ++i) {
+      channelIdsOutput_[l1t::demo::LinkId{"pfout_neutral", i}].push_back(linkCount++);
+    }
+    for (unsigned int i = 0; i < nPFOutMuon_ * 2; ++i) {
+      channelIdsOutput_[l1t::demo::LinkId{"pfout_muon", i}].push_back(linkCount++);
+    }
+    channelSpecsOutput_["pfin_track"] = {tmuxFactor_, 0};
+    channelSpecsOutput_["pfin_emcalo"] = {tmuxFactor_, 0};
+    channelSpecsOutput_["pfin_hadcalo"] = {tmuxFactor_, 0};
+    channelSpecsOutput_["pfin_muon"] = {tmuxFactor_, 0};
+    channelSpecsOutput_["pfout_charged"] = {tmuxFactor_, 0};
+    channelSpecsOutput_["pfout_photon"] = {tmuxFactor_, 0};
+    channelSpecsOutput_["pfout_neutral"] = {tmuxFactor_, 0};
+    channelSpecsOutput_["pfout_muon"] = {tmuxFactor_, 0};
+
+    debugFileWriter_ =
+        std::make_unique<l1t::demo::BoardDataWriter>(l1t::demo::parseFileFormat(fileFormat_),
+                                                     iConfig.getParameter<std::string>("debugFileName"),
+                                                     iConfig.getParameter<std::string>("debugFileExtension"),
+                                                     nOutputFramesPerBX_,
+                                                     tmuxFactor_,
+                                                     iConfig.getParameter<uint32_t>("maxLinesPerOutputFile"),
+                                                     channelIdsOutput_,
+                                                     channelSpecsOutput_);
+  }
+
 }
 
 L1TCorrelatorLayer1PatternFileWriter::~L1TCorrelatorLayer1PatternFileWriter() {}
@@ -120,6 +178,18 @@ edm::ParameterSetDescription L1TCorrelatorLayer1PatternFileWriter::getParameterS
   description.add<uint32_t>("tmuxFactor", 6u);
   description.add<uint32_t>("eventsPerFile", 12u);
   description.add<std::string>("fileFormat");
+
+  // these are for debugging internal values
+  description.add<std::string>("debugFileName", "");
+  description.add<std::string>("debugFileExtension", "txt.gz");
+  description.add<uint32_t>("nPFInTrack", 0);  // A value of 0 turns off adding it to the output
+  description.add<uint32_t>("nPFInEmCalo", 0);
+  description.add<uint32_t>("nPFInHadCalo", 0);
+  description.add<uint32_t>("nPFInMuon", 0);
+  description.add<uint32_t>("nPFOutCharged", 0);
+  description.add<uint32_t>("nPFOutPhoton", 0);
+  description.add<uint32_t>("nPFOutNeutral", 0);
+  description.add<uint32_t>("nPFOutMuon", 0);
 
   description.ifValue(edm::ParameterDescription<std::string>("partition", "Barrel", true),
                       "Barrel" >> (describeTF() and describeGCTEm() and describeGCTHad() and describeGTT() and describeGMT() and
@@ -191,12 +261,20 @@ void L1TCorrelatorLayer1PatternFileWriter::write(const l1ct::Event& event) {
     outputFileWriter_->addEvent(outputs);
   }
 
+  if (writeDebugs_) {
+    l1t::demo::EventData debugs;
+    writeDebugs(event, debugs);
+    debugFileWriter_->addEvent(debugs);
+  }
+
   eventIndex_++;
   if (eventIndex_ % eventsPerFile_ == 0) {
     if (writeInputs_)
       inputFileWriter_->flush();
     if (writeOutputs_)
       outputFileWriter_->flush();
+    if (writeDebugs_)
+      debugFileWriter_->flush();
   }
 }
 
@@ -387,6 +465,155 @@ void L1TCorrelatorLayer1PatternFileWriter::writeGTT(const l1ct::Event& event, l1
   out.add(key, pvs);
 }
 
+// Debug functions output internal data for debugging purposes, mainly emulation/simulation comparison
+void L1TCorrelatorLayer1PatternFileWriter::writeDebugs(const l1ct::Event& event, l1t::demo::EventData& out) {
+
+  // Note:  the writers have a width of 64 very much hardcoded in the sizes. Therefore, send the 72 bits as
+  //        two separate "fibers"
+
+
+  if (nPFInTrack_) {
+    std::vector<std::vector<ap_uint<64>>> linksLow(nPFInTrack_);  // virtual links -- bits 63:0
+    std::vector<std::vector<ap_uint<64>>> linksHigh(nPFInTrack_);  // virtual links -- bits 71:64
+    for (auto ir : outputRegions_) {
+      auto pfvals = event.pfinputs[ir].track;
+      unsigned int npfvals = pfvals.size();
+      for (unsigned int i = 0; i < nPFInTrack_; ++i) {
+        ap_uint<72> val = i < npfvals ? pfvals[i].pack() : ap_uint<l1ct::TkObjEmu::BITWIDTH>(0);
+        linksHigh[i].push_back(val(71, 64));
+        linksLow[i].push_back(val(63, 0));
+      }
+    }
+    for (unsigned int i = 0; i < linksLow.size(); ++i) {
+      out.add(l1t::demo::LinkId{"pfin_track", 2*i}, linksHigh[i]);
+      out.add(l1t::demo::LinkId{"pfin_track", 2*i + 1}, linksLow[i]);
+    }
+  }
+  if (nPFInEmCalo_) {
+    std::vector<std::vector<ap_uint<64>>> linksLow(nPFInEmCalo_);  // virtual links -- bits 63:0
+    std::vector<std::vector<ap_uint<64>>> linksHigh(nPFInEmCalo_);  // virtual links -- bits 71:64
+    for (auto ir : outputRegions_) {
+      auto pfvals = event.pfinputs[ir].emcalo;
+      unsigned int npfvals = pfvals.size();
+      for (unsigned int i = 0; i < nPFInEmCalo_; ++i) {
+        ap_uint<72> val = i < npfvals ? pfvals[i].pack() : ap_uint<l1ct::EmCaloObjEmu::BITWIDTH>(0);
+        linksHigh[i].push_back(val(71, 64));
+        linksLow[i].push_back(val(63, 0));
+      }
+    }
+    for (unsigned int i = 0; i < linksLow.size(); ++i) {
+      out.add(l1t::demo::LinkId{"pfin_emcalo", 2*i}, linksHigh[i]);
+      out.add(l1t::demo::LinkId{"pfin_emcalo", 2*i + 1}, linksLow[i]);
+    }
+  }
+  if (nPFInHadCalo_) {
+    std::vector<std::vector<ap_uint<64>>> linksLow(nPFInHadCalo_);  // virtual links -- bits 63:0
+    std::vector<std::vector<ap_uint<64>>> linksHigh(nPFInHadCalo_);  // virtual links -- bits 71:64
+    for (auto ir : outputRegions_) {
+      auto pfvals = event.pfinputs[ir].hadcalo;
+      unsigned int npfvals = pfvals.size();
+      for (unsigned int i = 0; i < nPFInHadCalo_; ++i) {
+        ap_uint<72> val = i < npfvals ? pfvals[i].pack() : ap_uint<l1ct::HadCaloObjEmu::BITWIDTH>(0);
+        linksHigh[i].push_back(val(71, 64));
+        linksLow[i].push_back(val(63, 0));
+      }
+    }
+    for (unsigned int i = 0; i < linksLow.size(); ++i) {
+      out.add(l1t::demo::LinkId{"pfin_hadcalo", 2*i}, linksHigh[i]);
+      out.add(l1t::demo::LinkId{"pfin_hadcalo", 2*i + 1}, linksLow[i]);
+    }
+  }
+  if (nPFInMuon_) {
+    std::vector<std::vector<ap_uint<64>>> linksLow(nPFInMuon_);  // virtual links -- bits 63:0
+    std::vector<std::vector<ap_uint<64>>> linksHigh(nPFInMuon_);  // virtual links -- bits 71:64
+    for (auto ir : outputRegions_) {
+      auto pfvals = event.pfinputs[ir].muon;
+      unsigned int npfvals = pfvals.size();
+      for (unsigned int i = 0; i < nPFInMuon_; ++i) {
+        ap_uint<72> val = i < npfvals ? pfvals[i].pack() : ap_uint<l1ct::MuObjEmu::BITWIDTH>(0);
+        linksHigh[i].push_back(val(71, 64));
+        linksLow[i].push_back(val(63, 0));
+      }
+    }
+    for (unsigned int i = 0; i < linksLow.size(); ++i) {
+      out.add(l1t::demo::LinkId{"pfin_muon", 2*i}, linksHigh[i]);
+      out.add(l1t::demo::LinkId{"pfin_muon", 2*i + 1}, linksLow[i]);
+    }
+  }
+
+  // the pf outoputs
+
+  if (nPFOutCharged_) {
+    std::vector<std::vector<ap_uint<64>>> linksLow(nPFOutCharged_);  // virtual links -- bits 63:0
+    std::vector<std::vector<ap_uint<64>>> linksHigh(nPFOutCharged_);  // virtual links -- bits 71:64
+    for (auto ir : outputRegions_) {
+      auto pfvals = event.out[ir].pfcharged;
+      unsigned int npfvals = pfvals.size();
+      for (unsigned int i = 0; i < nPFOutCharged_; ++i) {
+        ap_uint<72> val = i < npfvals ? pfvals[i].pack() : ap_uint<l1ct::PFChargedObjEmu::BITWIDTH>(0);
+        linksHigh[i].push_back(val(71, 64));
+        linksLow[i].push_back(val(63, 0));
+      }
+    }
+    for (unsigned int i = 0; i < linksLow.size(); ++i) {
+      out.add(l1t::demo::LinkId{"pfout_charged", 2*i}, linksHigh[i]);
+      out.add(l1t::demo::LinkId{"pfout_charged", 2*i + 1}, linksLow[i]);
+    }
+  }
+  if (nPFOutPhoton_) {
+    std::vector<std::vector<ap_uint<64>>> linksLow(nPFOutPhoton_);  // virtual links -- bits 63:0
+    std::vector<std::vector<ap_uint<64>>> linksHigh(nPFOutPhoton_);  // virtual links -- bits 71:64
+    for (auto ir : outputRegions_) {
+      auto pfvals = event.out[ir].pfphoton;
+      unsigned int npfvals = pfvals.size();
+      for (unsigned int i = 0; i < nPFOutPhoton_; ++i) {
+        ap_uint<72> val = i < npfvals ? pfvals[i].pack() : ap_uint<l1ct::PFNeutralObjEmu::BITWIDTH>(0);
+        linksHigh[i].push_back(val(71, 64));
+        linksLow[i].push_back(val(63, 0));
+      }
+    }
+    for (unsigned int i = 0; i < linksLow.size(); ++i) {
+      out.add(l1t::demo::LinkId{"pfout_photon", 2*i}, linksHigh[i]);
+      out.add(l1t::demo::LinkId{"pfout_photon", 2*i + 1}, linksLow[i]);
+    }
+  }
+  if (nPFOutNeutral_) {
+    std::vector<std::vector<ap_uint<64>>> linksLow(nPFOutNeutral_);  // virtual links -- bits 63:0
+    std::vector<std::vector<ap_uint<64>>> linksHigh(nPFOutNeutral_);  // virtual links -- bits 71:64
+    for (auto ir : outputRegions_) {
+      auto pfvals = event.out[ir].pfneutral;
+      unsigned int npfvals = pfvals.size();
+      for (unsigned int i = 0; i < nPFOutNeutral_; ++i) {
+        ap_uint<72> val = i < npfvals ? pfvals[i].pack() : ap_uint<l1ct::PFNeutralObjEmu::BITWIDTH>(0);
+        linksHigh[i].push_back(val(71, 64));
+        linksLow[i].push_back(val(63, 0));
+      }
+    }
+    for (unsigned int i = 0; i < linksLow.size(); ++i) {
+      out.add(l1t::demo::LinkId{"pfout_neutral", 2*i}, linksHigh[i]);
+      out.add(l1t::demo::LinkId{"pfout_neutral", 2*i + 1}, linksLow[i]);
+    }
+  }
+  if (nPFOutMuon_) {
+    std::vector<std::vector<ap_uint<64>>> linksLow(nPFOutMuon_);  // virtual links -- bits 63:0
+    std::vector<std::vector<ap_uint<64>>> linksHigh(nPFOutMuon_);  // virtual links -- bits 71:64
+    for (auto ir : outputRegions_) {
+      auto pfvals = event.out[ir].pfmuon;
+      unsigned int npfvals = pfvals.size();
+      for (unsigned int i = 0; i < nPFOutMuon_; ++i) {
+        ap_uint<72> val = i < npfvals ? pfvals[i].pack() : ap_uint<l1ct::PFChargedObjEmu::BITWIDTH>(0);
+        linksHigh[i].push_back(val(71, 64));
+        linksLow[i].push_back(val(63, 0));
+      }
+    }
+    for (unsigned int i = 0; i < linksLow.size(); ++i) {
+      out.add(l1t::demo::LinkId{"pfout_muon", 2*i}, linksHigh[i]);
+      out.add(l1t::demo::LinkId{"pfout_muon", 2*i + 1}, linksLow[i]);
+    }
+  }
+
+}
+
 void L1TCorrelatorLayer1PatternFileWriter::writePuppi(const l1ct::Event& event, l1t::demo::EventData& out) {
   unsigned int n = outputLinksPuppi_.size();
   std::vector<std::vector<ap_uint<64>>> links(n);
@@ -441,4 +668,6 @@ void L1TCorrelatorLayer1PatternFileWriter::flush() {
     inputFileWriter_->flush();
   if (outputFileWriter_)
     outputFileWriter_->flush();
+  if (debugFileWriter_)
+    debugFileWriter_->flush();
 }
