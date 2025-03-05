@@ -33,7 +33,7 @@ namespace l1ct {
 
     static edm::ParameterSetDescription getParameterSetDescription();
 
-    l1ct::EmCaloObjEmu decode(const l1ct::DetectorSector<l1ct::EmCaloObjEmu> &sec, const ap_uint<64> &in) const;
+    l1ct::EmCaloObjEmu decode(const l1ct::PFRegionEmu &sector, const ap_uint<64> &in) const;
 
   private:
     ap_uint<12> pt(const ap_uint<64> &in) const { return in.range(11, 0); }
