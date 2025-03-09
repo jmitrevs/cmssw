@@ -2,7 +2,6 @@
 #define L1Trigger_Phase2L1ParticleFlow_newfirmware_gcteminput_ref_h
 
 #include "DataFormats/L1TParticleFlow/interface/layer1_emulator.h"
-#include "DataFormats/L1TCalorimeterPhase2/interface/GCTEmDigiCluster.h"
 
 #include "L1Trigger/Phase2L1ParticleFlow/interface/corrector.h"
 #include "L1Trigger/Phase2L1ParticleFlow/interface/ParametricResolution.h"
