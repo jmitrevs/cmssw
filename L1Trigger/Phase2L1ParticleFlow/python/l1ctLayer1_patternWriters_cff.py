@@ -28,6 +28,9 @@ _barrelWriterOutputOnly = cms.PSet(
     gttNumberOfPVs = cms.uint32(_gttNumberOfPVs),
     gctEmSectors = cms.VPSet(),
     gctHadSectors = cms.VPSet(),
+    tfNumberOfTracks = cms.uint32(108),
+    gctNumberOfEMs = cms.uint32(32),
+    gctNumberOfHads = cms.uint32(48),
 )
 ## Barrel (54) split in 3 phi slices (EMP format)
 barrelWriterOutputOnlyPhiConfigs = [
@@ -103,8 +106,6 @@ barrelApxWriterConfig = [
     _barrelWriterOutputOnly.clone(
         fileFormat = cms.string("APx"),
         gttLink = cms.int32(123),
-        gttLatency = cms.uint32(50),
-        gttNumberOfPVs = cms.uint32(1),
         gmtTimeSlices = cms.VPSet(*[cms.PSet(gmtLink = cms.int32(38*t+10)) for t in range(3)]),
         gctEmSectors = cms.VPSet(*[ cms.PSet(gctEmLink = cms.int32(-1)) for s in range(12) ]),
         gctHadSectors = cms.VPSet(*[ cms.PSet(gctHadLink = cms.int32(-1)) for s in range(12) ]),

@@ -38,6 +38,9 @@ private:
   bool gctSingleLink_;
   uint32_t gmtNumberOfMuons_;
   uint32_t gttNumberOfPVs_;
+  uint32_t tfNumberOfTracks_;  // if this messes up Serenity, change to int32 and only apply if not negative?
+  uint32_t gctNumberOfEMs_;
+  uint32_t gctNumberOfHads_;
   uint32_t gttLatency_;
 
   std::vector<uint32_t> outputRegions_, outputLinksPuppi_;

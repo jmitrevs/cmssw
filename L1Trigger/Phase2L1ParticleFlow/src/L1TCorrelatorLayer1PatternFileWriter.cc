@@ -37,13 +37,16 @@ L1TCorrelatorLayer1PatternFileWriter::L1TCorrelatorLayer1PatternFileWriter(const
 
     if (partition_ == Partition::Barrel || partition_ == Partition::HGCal) {
       configTimeSlices(iConfig, "tf", eventTemplate.raw.track.size(), tfTimeslices_, tfLinksFactor_);
-      channelSpecsInput_["tf"] = {tfTmuxFactor_, tfTimeslices_};
+      tfNumberOfTracks_ = iConfig.getParameter<uint32_t>("tfNumberOfTracks");
+      channelSpecsInput_["tf"] = {tfTmuxFactor_, tfTimeslices_ * nInputFramesPerBX_ * tmuxFactor_ - (tfNumberOfTracks_ * 3 / 2)};
     }
     if (partition_ == Partition::Barrel) {
       configTimeSlices(iConfig, "gctEm", eventTemplate.raw.gctEm.size(), gctEmTimeslices_, gctEmLinksFactor_);
-      channelSpecsInput_["gctEm"] = {tmuxFactor_ * gctEmTimeslices_, gctEmTimeslices_};
+      gctNumberOfEMs_ = iConfig.getParameter<uint32_t>("gctNumberOfEMs");
+      channelSpecsInput_["gctEm"] = {tmuxFactor_ * gctEmTimeslices_, gctEmTimeslices_ * nInputFramesPerBX_ * tmuxFactor_ - gctNumberOfEMs_};
       configTimeSlices(iConfig, "gctHad", eventTemplate.raw.gctHad.size(), gctHadTimeslices_, gctHadLinksFactor_);
-      channelSpecsInput_["gctHad"] = {tmuxFactor_ * gctHadTimeslices_, gctHadTimeslices_};
+      gctNumberOfHads_ = iConfig.getParameter<uint32_t>("gctNumberOfHads");
+      channelSpecsInput_["gctHad"] = {tmuxFactor_ * gctHadTimeslices_, gctHadTimeslices_ * nInputFramesPerBX_ * tmuxFactor_ - gctNumberOfHads_};
     }
     if (partition_ == Partition::HGCal || partition_ == Partition::HGCalNoTk) {
       configTimeSlices(iConfig, "hgc", eventTemplate.raw.hgcalcluster.size(), hgcTimeslices_, hgcLinksFactor_);
@@ -59,7 +62,8 @@ L1TCorrelatorLayer1PatternFileWriter::L1TCorrelatorLayer1PatternFileWriter(const
       configTimeSlices(iConfig, "gtt", 1, gttTimeslices_, gttLinksFactor_);
       gttLatency_ = iConfig.getParameter<uint32_t>("gttLatency");
       gttNumberOfPVs_ = iConfig.getParameter<uint32_t>("gttNumberOfPVs");
-      channelSpecsInput_["gtt"] = l1t::demo::ChannelSpec{tmuxFactor_ * gttTimeslices_, 1, gttLatency_};
+      channelSpecsInput_["gtt"] = l1t::demo::ChannelSpec{tmuxFactor_ * gttTimeslices_, 
+        gmtTimeslices_ * nInputFramesPerBX_ * tmuxFactor_ - gttNumberOfPVs_, gttLatency_};
     }
     inputFileWriter_ =
         std::make_unique<l1t::demo::BoardDataWriter>(l1t::demo::parseFileFormat(fileFormat_),
@@ -202,13 +206,13 @@ edm::ParameterSetDescription L1TCorrelatorLayer1PatternFileWriter::getParameterS
 }
 
 std::unique_ptr<edm::ParameterDescriptionNode> L1TCorrelatorLayer1PatternFileWriter::describeTF() {
-  return describeTimeSlices("tf");
+  return describeTimeSlices("tf") and edm::ParameterDescription<uint32_t>("tfNumberOfTracks", 108, true);  // need to change if Serenity needs variable
 }
 std::unique_ptr<edm::ParameterDescriptionNode> L1TCorrelatorLayer1PatternFileWriter::describeGCTEm() {
-  return describeTimeSlices("gctEm");
+  return describeTimeSlices("gctEm") and edm::ParameterDescription<uint32_t>("gctNumberOfEMs", 32, true);
 }
 std::unique_ptr<edm::ParameterDescriptionNode> L1TCorrelatorLayer1PatternFileWriter::describeGCTHad() {
-  return describeTimeSlices("gctHad");
+  return describeTimeSlices("gctHad") and edm::ParameterDescription<uint32_t>("gctNumberOfHads", 48, true);
 }
 std::unique_ptr<edm::ParameterDescriptionNode> L1TCorrelatorLayer1PatternFileWriter::describeHGC() {
   return describeTimeSlices("hgc");
@@ -390,6 +394,7 @@ void L1TCorrelatorLayer1PatternFileWriter::writeTF(const l1ct::Event& event, l1t
         ret.emplace_back(packedtk(95, 32));
       }
     }
+    ret.resize(tfNumberOfTracks_ * 3 / 2, ap_uint<64>(0));
     out.add(key, ret);
   }
 }
@@ -400,6 +405,7 @@ void L1TCorrelatorLayer1PatternFileWriter::writeGCTEm(const l1ct::Event& event, 
     if (channelIdsInput_.count(key) == 0)
       continue;
     std::vector<ap_uint<64>> gctEm = event.raw.gctEm[iS].obj;
+    gctEm.resize(gctNumberOfEMs_, ap_uint<64>(0));
     out.add(key, gctEm);
   }
 }
@@ -410,6 +416,7 @@ void L1TCorrelatorLayer1PatternFileWriter::writeGCTHad(const l1ct::Event& event,
     if (channelIdsInput_.count(key) == 0)
       continue;
     std::vector<ap_uint<64>> gctHad = event.raw.gctHad[iS].obj;
+    gctHad.resize(gctNumberOfHads_, ap_uint<64>(0));
     out.add(key, gctHad);
   }
 }
