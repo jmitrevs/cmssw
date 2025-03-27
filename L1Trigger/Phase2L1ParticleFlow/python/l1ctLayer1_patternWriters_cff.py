@@ -133,11 +133,11 @@ for timeSlice in range(3):
         barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[(ilink+2)%9].tfLink = 2 + timeSlice * 38
         barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[(ilink+3)%9].tfLink = 3 + timeSlice * 38
         barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[(ilink+4)%9].tfLink = 4 + timeSlice * 38
-        barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[8 + ilink].tfLink = 5 + timeSlice * 38
-        barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[8 + (ilink+1)%9].tfLink = 6 + timeSlice * 38
-        barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[8 + (ilink+2)%9].tfLink = 7 + timeSlice * 38
-        barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[8 + (ilink+3)%9].tfLink = 8 + timeSlice * 38
-        barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[8 + (ilink+4)%9].tfLink = 9 + timeSlice * 38
+        barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[9 + ilink].tfLink = 5 + timeSlice * 38
+        barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[9 + (ilink+1)%9].tfLink = 6 + timeSlice * 38
+        barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[9 + (ilink+2)%9].tfLink = 7 + timeSlice * 38
+        barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[9 + (ilink+3)%9].tfLink = 8 + timeSlice * 38
+        barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[9 + (ilink+4)%9].tfLink = 9 + timeSlice * 38
 
 
 for t in range(3):
