@@ -115,7 +115,7 @@ barrelApxWriterConfig = [
 ]
 
 # Set GCT link numbers
-for iBigRegion, ilink in enumerate((2, 0, 1)):
+for iBigRegion, ilink in enumerate((0, 1, 2)):
     barrelApxWriterConfig[iBigRegion].gctEmSectors[ilink].gctEmLink = 119
     barrelApxWriterConfig[iBigRegion].gctEmSectors[ilink+6].gctEmLink = 120
     barrelApxWriterConfig[iBigRegion].gctEmSectors[ilink+3].gctEmLink = 121
@@ -127,7 +127,7 @@ for iBigRegion, ilink in enumerate((2, 0, 1)):
 
 # Set tracking link numbers
 for timeSlice in range(3):
-    for iBigRegion, ilink in enumerate((5, 8, 2)):
+    for iBigRegion, ilink in enumerate((8, 2, 5)):
         barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[ilink].tfLink = 0 + timeSlice * 38
         barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[(ilink+1)%9].tfLink = 1 + timeSlice * 38
         barrelApxWriterConfig[iBigRegion].tfTimeSlices[timeSlice].tfSectors[(ilink+2)%9].tfLink = 2 + timeSlice * 38
