@@ -63,7 +63,7 @@ L1TCorrelatorLayer1PatternFileWriter::L1TCorrelatorLayer1PatternFileWriter(const
       gttLatency_ = iConfig.getParameter<uint32_t>("gttLatency");
       gttNumberOfPVs_ = iConfig.getParameter<uint32_t>("gttNumberOfPVs");
       channelSpecsInput_["gtt"] = l1t::demo::ChannelSpec{tmuxFactor_ * gttTimeslices_, 
-        gmtTimeslices_ * nInputFramesPerBX_ * tmuxFactor_ - gttNumberOfPVs_, gttLatency_};
+        gttTimeslices_ * nInputFramesPerBX_ * tmuxFactor_ - gttNumberOfPVs_, gttLatency_};
     }
     inputFileWriter_ =
         std::make_unique<l1t::demo::BoardDataWriter>(l1t::demo::parseFileFormat(fileFormat_),
