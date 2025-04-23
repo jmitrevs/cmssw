@@ -30,7 +30,7 @@ l1ct::EmCaloObjEmu l1ct::GctEmClusterDecoderEmulator::decode(const l1ct::PFRegio
   l1ct::EmCaloObjEmu calo;
   calo.clear();
   calo.hwPt = pt(in) * l1ct::pt_t(0.5);  // the LSB for GCT objects
-  calo.hwEta = eta(in) * 4;  // at this point eta is abs(globalEta)
+  calo.hwEta = eta(in) * 4;              // at this point eta is abs(globalEta)
   calo.hwPhi = phi(in) * 4;
 
   if (corrector_.valid()) {

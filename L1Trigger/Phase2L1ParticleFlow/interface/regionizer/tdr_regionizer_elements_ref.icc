@@ -173,12 +173,13 @@ void l1ct::tdr_regionizer::Regionizer<T>::initSectors(const std::vector<Detector
   // but it's easier to create the inverse, first
 
   if (debug_) {
-    dbgCout() << "secotors.size() = " << sectors.size() <<  std::endl;
+    dbgCout() << "secotors.size() = " << sectors.size() << std::endl;
   }
 
   for (const auto& sector : sectors) {
     if (debug_) {
-      dbgCout() << "intEtaCenter() = " << sector.region.intEtaCenter() << ", intPhiCenter() = " << sector.region.intPhiCenter() << std::endl;
+      dbgCout() << "intEtaCenter() = " << sector.region.intEtaCenter()
+                << ", intPhiCenter() = " << sector.region.intPhiCenter() << std::endl;
     }
     if (isInBigRegionLoose(sector.region)) {
       sectorMapLogToPhys_.push_back(sectors_.size());
@@ -191,7 +192,9 @@ void l1ct::tdr_regionizer::Regionizer<T>::initSectors(const std::vector<Detector
   //   dbgCout() << "Number of sectors: " << nsectors_ << std::endl;
   // }
 
-  std::sort(sectorMapLogToPhys_.begin(), sectorMapLogToPhys_.end(), [this](size_t a, size_t b) { return this->sortSectors(a, b); });
+  std::sort(sectorMapLogToPhys_.begin(), sectorMapLogToPhys_.end(), [this](size_t a, size_t b) {
+    return this->sortSectors(a, b);
+  });
   if (debug_) {
     for (auto val : sectorMapLogToPhys_) {
       dbgCout() << "sectorMapLogToPhys phys index = " << val << ", eta = " << sectors_[val].intEtaCenter()

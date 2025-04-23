@@ -28,11 +28,11 @@ private:
   std::map<std::string, l1t::demo::ChannelSpec> channelSpecsInput_, channelSpecsOutput_;
 
   const unsigned int tfTmuxFactor_ = 18, tfLinksFactor_ = 1;  // numbers not really configurable in current architecture
-  const unsigned int hgcTmuxFactor_ = 18, hgcLinksFactor_ = 4;  // not really configurable in current architecture
-  const unsigned int gctEmTmuxFactor_ = 6, gctEmLinksFactor_ = 1;       // not really configurable in current architecture
-  const unsigned int gctHadTmuxFactor_ = 6, gctHadLinksFactor_ = 1;       // not really configurable in current architecture
-  const unsigned int gmtTmuxFactor_ = 18, gmtLinksFactor_ = 1;  // not really configurable in current architecture
-  const unsigned int gttTmuxFactor_ = 6, gttLinksFactor_ = 1;   // not really configurable in current architecture
+  const unsigned int hgcTmuxFactor_ = 18, hgcLinksFactor_ = 4;       // not really configurable in current architecture
+  const unsigned int gctEmTmuxFactor_ = 6, gctEmLinksFactor_ = 1;    // not really configurable in current architecture
+  const unsigned int gctHadTmuxFactor_ = 6, gctHadLinksFactor_ = 1;  // not really configurable in current architecture
+  const unsigned int gmtTmuxFactor_ = 18, gmtLinksFactor_ = 1;       // not really configurable in current architecture
+  const unsigned int gttTmuxFactor_ = 6, gttLinksFactor_ = 1;        // not really configurable in current architecture
   const unsigned int tfTimeslices_, hgcTimeslices_, gctEmTimeslices_, gctHadTimeslices_, gmtTimeslices_, gttTimeslices_;
   uint32_t gctLinksEcal_, gctLinksHad_;
   bool gctSingleLink_;

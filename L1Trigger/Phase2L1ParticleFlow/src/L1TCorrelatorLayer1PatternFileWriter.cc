@@ -31,22 +31,24 @@ L1TCorrelatorLayer1PatternFileWriter::L1TCorrelatorLayer1PatternFileWriter(const
       fileFormat_(iConfig.getParameter<std::string>("fileFormat")),
       eventsPerFile_(iConfig.getParameter<uint32_t>("eventsPerFile")),
       eventIndex_(0) {
-
   if (writeInputs_) {
     nInputFramesPerBX_ = iConfig.getParameter<uint32_t>("nInputFramesPerBX");
 
     if (partition_ == Partition::Barrel || partition_ == Partition::HGCal) {
       configTimeSlices(iConfig, "tf", eventTemplate.raw.track.size(), tfTimeslices_, tfLinksFactor_);
       tfNumberOfTracks_ = iConfig.getParameter<uint32_t>("tfNumberOfTracks");
-      channelSpecsInput_["tf"] = {tfTmuxFactor_, tfTimeslices_ * nInputFramesPerBX_ * tmuxFactor_ - (tfNumberOfTracks_ * 3 / 2)};
+      channelSpecsInput_["tf"] = {tfTmuxFactor_,
+                                  tfTimeslices_ * nInputFramesPerBX_ * tmuxFactor_ - (tfNumberOfTracks_ * 3 / 2)};
     }
     if (partition_ == Partition::Barrel) {
       configTimeSlices(iConfig, "gctEm", eventTemplate.raw.gctEm.size(), gctEmTimeslices_, gctEmLinksFactor_);
       gctNumberOfEMs_ = iConfig.getParameter<uint32_t>("gctNumberOfEMs");
-      channelSpecsInput_["gctEm"] = {tmuxFactor_ * gctEmTimeslices_, gctEmTimeslices_ * nInputFramesPerBX_ * tmuxFactor_ - gctNumberOfEMs_};
+      channelSpecsInput_["gctEm"] = {tmuxFactor_ * gctEmTimeslices_,
+                                     gctEmTimeslices_ * nInputFramesPerBX_ * tmuxFactor_ - gctNumberOfEMs_};
       configTimeSlices(iConfig, "gctHad", eventTemplate.raw.gctHad.size(), gctHadTimeslices_, gctHadLinksFactor_);
       gctNumberOfHads_ = iConfig.getParameter<uint32_t>("gctNumberOfHads");
-      channelSpecsInput_["gctHad"] = {tmuxFactor_ * gctHadTimeslices_, gctHadTimeslices_ * nInputFramesPerBX_ * tmuxFactor_ - gctNumberOfHads_};
+      channelSpecsInput_["gctHad"] = {tmuxFactor_ * gctHadTimeslices_,
+                                      gctHadTimeslices_ * nInputFramesPerBX_ * tmuxFactor_ - gctNumberOfHads_};
     }
     if (partition_ == Partition::HGCal || partition_ == Partition::HGCalNoTk) {
       configTimeSlices(iConfig, "hgc", eventTemplate.raw.hgcalcluster.size(), hgcTimeslices_, hgcLinksFactor_);
@@ -62,8 +64,10 @@ L1TCorrelatorLayer1PatternFileWriter::L1TCorrelatorLayer1PatternFileWriter(const
       configTimeSlices(iConfig, "gtt", 1, gttTimeslices_, gttLinksFactor_);
       gttLatency_ = iConfig.getParameter<uint32_t>("gttLatency");
       gttNumberOfPVs_ = iConfig.getParameter<uint32_t>("gttNumberOfPVs");
-      channelSpecsInput_["gtt"] = l1t::demo::ChannelSpec{tmuxFactor_ * gttTimeslices_, 
-        gttTimeslices_ * nInputFramesPerBX_ * tmuxFactor_ - gttNumberOfPVs_, gttLatency_};
+      channelSpecsInput_["gtt"] =
+          l1t::demo::ChannelSpec{tmuxFactor_ * gttTimeslices_,
+                                 gttTimeslices_ * nInputFramesPerBX_ * tmuxFactor_ - gttNumberOfPVs_,
+                                 gttLatency_};
     }
     inputFileWriter_ =
         std::make_unique<l1t::demo::BoardDataWriter>(l1t::demo::parseFileFormat(fileFormat_),
@@ -164,7 +168,6 @@ L1TCorrelatorLayer1PatternFileWriter::L1TCorrelatorLayer1PatternFileWriter(const
                                                      channelIdsOutput_,
                                                      channelSpecsOutput_);
   }
-
 }
 
 L1TCorrelatorLayer1PatternFileWriter::~L1TCorrelatorLayer1PatternFileWriter() {}
@@ -196,8 +199,8 @@ edm::ParameterSetDescription L1TCorrelatorLayer1PatternFileWriter::getParameterS
   description.add<uint32_t>("nPFOutMuon", 0);
 
   description.ifValue(edm::ParameterDescription<std::string>("partition", "Barrel", true),
-                      "Barrel" >> (describeTF() and describeGCTEm() and describeGCTHad() and describeGTT() and describeGMT() and
-                                   describePuppi() and describeEG()) or
+                      "Barrel" >> (describeTF() and describeGCTEm() and describeGCTHad() and describeGTT() and
+                                   describeGMT() and describePuppi() and describeEG()) or
                           "HGCal" >> (describeTF() and describeHGC() and describeGTT() and describeGMT() and
                                       describePuppi() and describeEG()) or
                           "HGCalNoTk" >> (describeHGC() and describeGMT() and describePuppi()) or
@@ -206,7 +209,8 @@ edm::ParameterSetDescription L1TCorrelatorLayer1PatternFileWriter::getParameterS
 }
 
 std::unique_ptr<edm::ParameterDescriptionNode> L1TCorrelatorLayer1PatternFileWriter::describeTF() {
-  return describeTimeSlices("tf") and edm::ParameterDescription<uint32_t>("tfNumberOfTracks", 108, true);  // need to change if Serenity needs variable
+  return describeTimeSlices("tf") and edm::ParameterDescription<uint32_t>(
+                                          "tfNumberOfTracks", 108, true);  // need to change if Serenity needs variable
 }
 std::unique_ptr<edm::ParameterDescriptionNode> L1TCorrelatorLayer1PatternFileWriter::describeGCTEm() {
   return describeTimeSlices("gctEm") and edm::ParameterDescription<uint32_t>("gctNumberOfEMs", 32, true);
@@ -421,7 +425,6 @@ void L1TCorrelatorLayer1PatternFileWriter::writeGCTHad(const l1ct::Event& event,
   }
 }
 
-
 void L1TCorrelatorLayer1PatternFileWriter::writeHGC(const l1ct::Event& event, l1t::demo::EventData& out) {
   assert(hgcLinksFactor_ == 4);  // this piece of code won't really work otherwise
   std::vector<ap_uint<64>> ret[hgcLinksFactor_];
@@ -474,13 +477,11 @@ void L1TCorrelatorLayer1PatternFileWriter::writeGTT(const l1ct::Event& event, l1
 
 // Debug functions output internal data for debugging purposes, mainly emulation/simulation comparison
 void L1TCorrelatorLayer1PatternFileWriter::writeDebugs(const l1ct::Event& event, l1t::demo::EventData& out) {
-
   // Note:  the writers have a width of 64 very much hardcoded in the sizes. Therefore, send the 72 bits as
   //        two separate "fibers"
 
-
   if (nPFInTrack_) {
-    std::vector<std::vector<ap_uint<64>>> linksLow(nPFInTrack_);  // virtual links -- bits 63:0
+    std::vector<std::vector<ap_uint<64>>> linksLow(nPFInTrack_);   // virtual links -- bits 63:0
     std::vector<std::vector<ap_uint<64>>> linksHigh(nPFInTrack_);  // virtual links -- bits 71:64
     for (auto ir : outputRegions_) {
       auto pfvals = event.pfinputs[ir].track;
@@ -492,12 +493,12 @@ void L1TCorrelatorLayer1PatternFileWriter::writeDebugs(const l1ct::Event& event,
       }
     }
     for (unsigned int i = 0; i < linksLow.size(); ++i) {
-      out.add(l1t::demo::LinkId{"pfin_track", 2*i}, linksHigh[i]);
-      out.add(l1t::demo::LinkId{"pfin_track", 2*i + 1}, linksLow[i]);
+      out.add(l1t::demo::LinkId{"pfin_track", 2 * i}, linksHigh[i]);
+      out.add(l1t::demo::LinkId{"pfin_track", 2 * i + 1}, linksLow[i]);
     }
   }
   if (nPFInEmCalo_) {
-    std::vector<std::vector<ap_uint<64>>> linksLow(nPFInEmCalo_);  // virtual links -- bits 63:0
+    std::vector<std::vector<ap_uint<64>>> linksLow(nPFInEmCalo_);   // virtual links -- bits 63:0
     std::vector<std::vector<ap_uint<64>>> linksHigh(nPFInEmCalo_);  // virtual links -- bits 71:64
     for (auto ir : outputRegions_) {
       auto pfvals = event.pfinputs[ir].emcalo;
@@ -509,12 +510,12 @@ void L1TCorrelatorLayer1PatternFileWriter::writeDebugs(const l1ct::Event& event,
       }
     }
     for (unsigned int i = 0; i < linksLow.size(); ++i) {
-      out.add(l1t::demo::LinkId{"pfin_emcalo", 2*i}, linksHigh[i]);
-      out.add(l1t::demo::LinkId{"pfin_emcalo", 2*i + 1}, linksLow[i]);
+      out.add(l1t::demo::LinkId{"pfin_emcalo", 2 * i}, linksHigh[i]);
+      out.add(l1t::demo::LinkId{"pfin_emcalo", 2 * i + 1}, linksLow[i]);
     }
   }
   if (nPFInHadCalo_) {
-    std::vector<std::vector<ap_uint<64>>> linksLow(nPFInHadCalo_);  // virtual links -- bits 63:0
+    std::vector<std::vector<ap_uint<64>>> linksLow(nPFInHadCalo_);   // virtual links -- bits 63:0
     std::vector<std::vector<ap_uint<64>>> linksHigh(nPFInHadCalo_);  // virtual links -- bits 71:64
     for (auto ir : outputRegions_) {
       auto pfvals = event.pfinputs[ir].hadcalo;
@@ -526,12 +527,12 @@ void L1TCorrelatorLayer1PatternFileWriter::writeDebugs(const l1ct::Event& event,
       }
     }
     for (unsigned int i = 0; i < linksLow.size(); ++i) {
-      out.add(l1t::demo::LinkId{"pfin_hadcalo", 2*i}, linksHigh[i]);
-      out.add(l1t::demo::LinkId{"pfin_hadcalo", 2*i + 1}, linksLow[i]);
+      out.add(l1t::demo::LinkId{"pfin_hadcalo", 2 * i}, linksHigh[i]);
+      out.add(l1t::demo::LinkId{"pfin_hadcalo", 2 * i + 1}, linksLow[i]);
     }
   }
   if (nPFInMuon_) {
-    std::vector<std::vector<ap_uint<64>>> linksLow(nPFInMuon_);  // virtual links -- bits 63:0
+    std::vector<std::vector<ap_uint<64>>> linksLow(nPFInMuon_);   // virtual links -- bits 63:0
     std::vector<std::vector<ap_uint<64>>> linksHigh(nPFInMuon_);  // virtual links -- bits 71:64
     for (auto ir : outputRegions_) {
       auto pfvals = event.pfinputs[ir].muon;
@@ -543,15 +544,15 @@ void L1TCorrelatorLayer1PatternFileWriter::writeDebugs(const l1ct::Event& event,
       }
     }
     for (unsigned int i = 0; i < linksLow.size(); ++i) {
-      out.add(l1t::demo::LinkId{"pfin_muon", 2*i}, linksHigh[i]);
-      out.add(l1t::demo::LinkId{"pfin_muon", 2*i + 1}, linksLow[i]);
+      out.add(l1t::demo::LinkId{"pfin_muon", 2 * i}, linksHigh[i]);
+      out.add(l1t::demo::LinkId{"pfin_muon", 2 * i + 1}, linksLow[i]);
     }
   }
 
   // the pf outoputs
 
   if (nPFOutCharged_) {
-    std::vector<std::vector<ap_uint<64>>> linksLow(nPFOutCharged_);  // virtual links -- bits 63:0
+    std::vector<std::vector<ap_uint<64>>> linksLow(nPFOutCharged_);   // virtual links -- bits 63:0
     std::vector<std::vector<ap_uint<64>>> linksHigh(nPFOutCharged_);  // virtual links -- bits 71:64
     for (auto ir : outputRegions_) {
       auto pfvals = event.out[ir].pfcharged;
@@ -563,12 +564,12 @@ void L1TCorrelatorLayer1PatternFileWriter::writeDebugs(const l1ct::Event& event,
       }
     }
     for (unsigned int i = 0; i < linksLow.size(); ++i) {
-      out.add(l1t::demo::LinkId{"pfout_charged", 2*i}, linksHigh[i]);
-      out.add(l1t::demo::LinkId{"pfout_charged", 2*i + 1}, linksLow[i]);
+      out.add(l1t::demo::LinkId{"pfout_charged", 2 * i}, linksHigh[i]);
+      out.add(l1t::demo::LinkId{"pfout_charged", 2 * i + 1}, linksLow[i]);
     }
   }
   if (nPFOutPhoton_) {
-    std::vector<std::vector<ap_uint<64>>> linksLow(nPFOutPhoton_);  // virtual links -- bits 63:0
+    std::vector<std::vector<ap_uint<64>>> linksLow(nPFOutPhoton_);   // virtual links -- bits 63:0
     std::vector<std::vector<ap_uint<64>>> linksHigh(nPFOutPhoton_);  // virtual links -- bits 71:64
     for (auto ir : outputRegions_) {
       auto pfvals = event.out[ir].pfphoton;
@@ -580,12 +581,12 @@ void L1TCorrelatorLayer1PatternFileWriter::writeDebugs(const l1ct::Event& event,
       }
     }
     for (unsigned int i = 0; i < linksLow.size(); ++i) {
-      out.add(l1t::demo::LinkId{"pfout_photon", 2*i}, linksHigh[i]);
-      out.add(l1t::demo::LinkId{"pfout_photon", 2*i + 1}, linksLow[i]);
+      out.add(l1t::demo::LinkId{"pfout_photon", 2 * i}, linksHigh[i]);
+      out.add(l1t::demo::LinkId{"pfout_photon", 2 * i + 1}, linksLow[i]);
     }
   }
   if (nPFOutNeutral_) {
-    std::vector<std::vector<ap_uint<64>>> linksLow(nPFOutNeutral_);  // virtual links -- bits 63:0
+    std::vector<std::vector<ap_uint<64>>> linksLow(nPFOutNeutral_);   // virtual links -- bits 63:0
     std::vector<std::vector<ap_uint<64>>> linksHigh(nPFOutNeutral_);  // virtual links -- bits 71:64
     for (auto ir : outputRegions_) {
       auto pfvals = event.out[ir].pfneutral;
@@ -597,12 +598,12 @@ void L1TCorrelatorLayer1PatternFileWriter::writeDebugs(const l1ct::Event& event,
       }
     }
     for (unsigned int i = 0; i < linksLow.size(); ++i) {
-      out.add(l1t::demo::LinkId{"pfout_neutral", 2*i}, linksHigh[i]);
-      out.add(l1t::demo::LinkId{"pfout_neutral", 2*i + 1}, linksLow[i]);
+      out.add(l1t::demo::LinkId{"pfout_neutral", 2 * i}, linksHigh[i]);
+      out.add(l1t::demo::LinkId{"pfout_neutral", 2 * i + 1}, linksLow[i]);
     }
   }
   if (nPFOutMuon_) {
-    std::vector<std::vector<ap_uint<64>>> linksLow(nPFOutMuon_);  // virtual links -- bits 63:0
+    std::vector<std::vector<ap_uint<64>>> linksLow(nPFOutMuon_);   // virtual links -- bits 63:0
     std::vector<std::vector<ap_uint<64>>> linksHigh(nPFOutMuon_);  // virtual links -- bits 71:64
     for (auto ir : outputRegions_) {
       auto pfvals = event.out[ir].pfmuon;
@@ -614,11 +615,10 @@ void L1TCorrelatorLayer1PatternFileWriter::writeDebugs(const l1ct::Event& event,
       }
     }
     for (unsigned int i = 0; i < linksLow.size(); ++i) {
-      out.add(l1t::demo::LinkId{"pfout_muon", 2*i}, linksHigh[i]);
-      out.add(l1t::demo::LinkId{"pfout_muon", 2*i + 1}, linksLow[i]);
+      out.add(l1t::demo::LinkId{"pfout_muon", 2 * i}, linksHigh[i]);
+      out.add(l1t::demo::LinkId{"pfout_muon", 2 * i + 1}, linksLow[i]);
     }
   }
-
 }
 
 void L1TCorrelatorLayer1PatternFileWriter::writePuppi(const l1ct::Event& event, l1t::demo::EventData& out) {

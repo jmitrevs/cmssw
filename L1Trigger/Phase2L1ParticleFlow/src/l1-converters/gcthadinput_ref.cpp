@@ -23,7 +23,7 @@ l1ct::HadCaloObjEmu l1ct::GctHadClusterDecoderEmulator::decode(const l1ct::PFReg
   l1ct::HadCaloObjEmu calo;
   calo.clear();
   calo.hwPt = pt(in) * l1ct::pt_t(0.5);  // the LSB for GCT objects
-  calo.hwEta = eta(in) * 4;  // at this point eta is abs(globalEta)
+  calo.hwEta = eta(in) * 4;              // at this point eta is abs(globalEta)
   calo.hwPhi = phi(in) * 4;
 
   // The proposal is that hoe is going away, to be replaced by EmPt, which is not there yet.
