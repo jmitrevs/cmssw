@@ -1,6 +1,7 @@
 #ifndef DataFormats_L1TCalorimeterPhase2_DigitizedL1CaloJet_h
 #define DataFormats_L1TCalorimeterPhase2_DigitizedL1CaloJet_h
 
+#include <ap_int.h>
 #include <vector>
 #include <map>
 #include <string>
@@ -10,38 +11,95 @@
 
 namespace l1tp2 {
 
-  class DigitizedL1CaloJet : public l1t::L1Candidate {
+  class DigitizedL1CaloJet {
   public:
-    DigitizedL1CaloJet()
-        : l1t::L1Candidate(),
-          jetEt_(0.),
-          jetEta_(-99.),
-          jetPhi_(-99.) {}
+    DigitizedL1CaloJet() { jetData = 0x0; }
 
-    DigitizedL1CaloJet(const PolarLorentzVector& p4,
-                    float jetEt,
-                    float jetEta,
-                    float jetPhi)
-        : l1t::L1Candidate(p4),
-          jetEt_(jetEt),
-          jetEta_(jetEta),
-          jetPhi_(jetPhi) {}
+    DigitizedL1CaloJet(ap_uint<64> data) { jetData = data; }
 
-    inline float jetEt() const { return jetEt_; };
-    inline float jetEta() const { return jetEta_; };
-    inline float jetPhi() const { return jetPhi_; };
+    //Constructor from digitized inputs
+    DigitizedL1CaloJet(ap_uint<1> isValid,
+                       ap_uint<16> pt,
+                       ap_int<13> phi,
+                       ap_int<14> eta) {
+      jetData = ((ap_uint<64>)isValid) | (((ap_uint<64>)pt) << 1) | (((ap_int<64>)phi) << 17) |
+                (((ap_uint<64>)eta) << 30);
+    }
 
-    void setJetEt(float jetEtIn) { jetEt_ = jetEtIn; };
-    void setJetEta(float jetEtaIn) { jetEta_ = jetEtaIn; };
-    void setJetPhi(float jetPhiIn) { jetPhi_ = jetPhiIn; };
+    // Constructor from float inputs
+    DigitizedL1CaloJet(bool isValid_b,
+                       float pt_f,
+                       float phi_f,
+                       float eta_f) {
+      jetData = ((ap_uint<64>)digitizeIsValid(isValid_b)) | ((ap_uint<64>)digitizePt(pt_f) << 1) |
+      ((ap_uint<64>)digitizePhi(phi_f) << 17) | ((ap_uint<64>)digitizeEta(eta_f) << 30);
+    }
+
+    ap_uint<64> data() const { return jetData; }
+
+    // LSB getters
+    float ptLSB() const { return LSB_PT; }
+    float phiLSB() const { return LSB_PHI; }
+    float etaLSB() const { return LSB_ETA; }
+
+    // Data getters (digitized)
+    ap_uint<1> isValid() const { return (jetData & 1); }
+    ap_uint<16> pt() const { return ((jetData >> 1) & 0xFFFF); } // 16 1s = 0xFFFF
+    ap_int<13> phi() const { return (ap_int<13>)((jetData >> 17) & 0x1FFF); } // 13 1s = 0x1FFF
+    ap_int<14> eta() const { return (ap_int<14>)((jetData >> 30) & 0x3FFF); } // 14 1s = 0x3FFF
+
+    // Data getters (floats/bools)
+    bool isValidBool() const { return (bool)isValid(); }
+    float ptFloat() const { return (pt() * ptLSB()); }
+    float phiFloat() const { return (phi() * phiLSB()); }
+    float etaFloat() const { return (eta() * etaLSB()); }
 
   private:
-    // ET
-    float jetEt_;
-    // Tower (real) eta
-    float jetEta_;
-    // Tower (real) phi
-    float jetPhi_;
+    // Digitized information as one value
+    unsigned long long int jetData;
+    
+    // Constants
+    static constexpr float LSB_PT = 0.03125;
+    static constexpr float LSB_PHI = M_PI / 0x1000; // 2^12 = 0x1000
+    static constexpr float LSB_ETA = M_PI / 0x1000;
+
+    static constexpr unsigned int n_bits_pt = 16;
+    static constexpr unsigned int n_bits_phi = 13;
+    static constexpr unsigned int n_bits_eta = 14;
+
+    // Private member functions for doing the digitization
+    ap_uint<16> digitizePt(float pt_f) {
+      float maxPt_f = (std::pow(2.0f, n_bits_pt) - 1) * LSB_PT;
+      // If pT exceeds the maximum, saturate the value
+      if (pt_f >= maxPt_f) {
+        return (ap_uint<16>)0xFFFF; // 16 1s = 0b1111111111111111 = 0xFFFF
+      }
+      return (ap_uint<16>)(pt_f / LSB_PT);
+    }
+
+    ap_int<13> digitizePhi(float phi_f) {
+      float maxPhi_f = (std::pow(2.0f, n_bits_phi) - 1) * LSB_PHI;
+      // If phi exceeds the maximum (very few values should), saturate the value
+      if (phi_f >= maxPhi_f) {
+        return (ap_int<13>)0xFFF; // 12 1s in binary = 0xFFF (1 bit for sign)
+      } else if (phi_f <= -maxPhi_f) {
+        return (ap_int<13>)-0xFFF;
+      }
+      return (ap_int<13>)(phi_f / LSB_PHI);
+    }
+
+    ap_uint<14> digitizeEta(float eta_f) {
+      float maxEta_f = (std::pow(2.0f, n_bits_eta) - 1) * LSB_ETA;
+      // If eta exceeds the maximum, saturate the value
+      if (eta_f >= maxEta_f) {
+        return (ap_int<14>)0x1FFF; // 13 1s in binary = 0x1FFF (1 bit for sign)
+      } else if (eta_f <= -maxEta_f) {
+        return (ap_int<14>)-0x1FFF;
+      }
+      return (ap_int<14>)(eta_f / LSB_ETA);
+    }
+
+    ap_uint<1> digitizeIsValid(bool isValid_b) { return (ap_uint<1>)isValid_b; }
   };
 
   // Concrete collection of output objects (with extra tuning information)
