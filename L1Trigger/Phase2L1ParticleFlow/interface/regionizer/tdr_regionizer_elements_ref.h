@@ -127,7 +127,7 @@ namespace l1ct {
     class BufferEntry {
     public:
       BufferEntry() {}
-      BufferEntry(const T& obj, std::vector<size_t> srIndices, int glbeta, int glbphi, int locphi, unsigned int clk);
+      BufferEntry(const T& obj, std::vector<size_t> srIndices, int glbeta, int glbphi, bool duplicate, unsigned int clk);
 
       unsigned int clock() const { return linkobjclk_; }
       int nextSR() const { return (objcount_ < srIndices_.size()) ? srIndices_[objcount_] : -1; }
@@ -135,7 +135,7 @@ namespace l1ct {
       int pt() const { return obj_.intPt(); }
       int glbPhi() const { return glbphi_; }
       int glbEta() const { return glbeta_; }
-      int sectorLocalPhi() const { return locphi_; }
+      int duplicate() const { return duplicate_; }
 
       //T obj() { return obj_; }
       const T& obj() const { return obj_; }
@@ -146,8 +146,8 @@ namespace l1ct {
       std::vector<size_t> srIndices_;
       /// The global eta and phi of the object (hard to get with duplicates)
       int glbeta_, glbphi_;
-      /// The local phi relative to the sector (not SR), used for GCT duplicate removal
-      int locphi_;
+      /// Is this a duplciate that should be ignored? used for GCT duplicate removal
+      bool duplicate_;
       unsigned int linkobjclk_, objcount_;
     };
 
@@ -161,8 +161,8 @@ namespace l1ct {
                     std::vector<size_t> srs,
                     int glbeta,
                     int glbphi,
-                    int locphi,
-                    unsigned int dupNum,
+                    bool isDuplicate,  // this is mainly for GCT, is it one of the duplciates
+                    unsigned int dupNum,  // this is for the (currently unused) featrue of multiple buffers per sector
                     unsigned int ndup);
 
       BufferEntry<T>& front() { return data_.front(); }
@@ -179,7 +179,7 @@ namespace l1ct {
       int pt(unsigned int index = 0) const { return data_[index].pt(); }
       int glbPhi(unsigned int index = 0) const { return data_[index].glbPhi(); }
       int glbEta(unsigned int index = 0) const { return data_[index].glbEta(); }
-      int sectorLocalPhi(unsigned int index = 0) const { return data_[index].sectorLocalPhi(); }
+      int duplicate(unsigned int index = 0) const { return data_[index].duplicate(); }
 
       unsigned int numEntries() const { return data_.size(); }
 
@@ -197,14 +197,13 @@ namespace l1ct {
 
     private:
       // used when building up the linkobjclk_ entries for the BufferEntries
-      unsigned int nextObjClk(unsigned int ndup);
-
+      unsigned int nextObjClk(unsigned int ndup,  bool skip);  // may need to treat pt == 0 and overlap differently
       // transient--used only during event construction, not used after
       // Counts in 1.39ns increments (i.e. 360 increments by 2, 240 by 3)
       unsigned int clkindex360_;
       unsigned int clkindex240_;
 
-      static unsigned int constexpr INIT360 = 1;
+      static unsigned int constexpr INIT360 = 10;
       static unsigned int constexpr INIT240 = 0;
 
       /// The actual data
