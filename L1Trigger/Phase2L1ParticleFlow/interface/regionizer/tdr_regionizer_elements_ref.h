@@ -161,7 +161,7 @@ namespace l1ct {
                     std::vector<size_t> srs,
                     int glbeta,
                     int glbphi,
-                    bool isDuplicate,  // this is mainly for GCT, is it one of the duplciates
+                    bool duplicate,       // this is mainly for GCT, is it one of the duplciates
                     unsigned int dupNum,  // this is for the (currently unused) featrue of multiple buffers per sector
                     unsigned int ndup);
 
@@ -169,7 +169,7 @@ namespace l1ct {
       const BufferEntry<T>& front() const { return data_.front(); }
 
       /// sets the next time something is taken from this buffer
-      void updateNextObjectTime(int currentTime);
+      void updateNextObjectTime(int currentTime, bool incrementTime = true);
 
       /// delete the front element
       void pop() { data_.pop_front(); }
@@ -197,14 +197,14 @@ namespace l1ct {
 
     private:
       // used when building up the linkobjclk_ entries for the BufferEntries
-      unsigned int nextObjClk(unsigned int ndup,  bool skip);  // may need to treat pt == 0 and overlap differently
+      unsigned int nextObjClk(unsigned int ndup, bool skip);  // may need to treat pt == 0 and overlap differently
       // transient--used only during event construction, not used after
       // Counts in 1.39ns increments (i.e. 360 increments by 2, 240 by 3)
       unsigned int clkindex360_;
       unsigned int clkindex240_;
 
-      static unsigned int constexpr INIT360 = 10;
-      static unsigned int constexpr INIT240 = 0;
+      static unsigned int constexpr INIT360 = 2;
+      static unsigned int constexpr INIT240 = 4;
 
       /// The actual data
       std::deque<BufferEntry<T>> data_;
