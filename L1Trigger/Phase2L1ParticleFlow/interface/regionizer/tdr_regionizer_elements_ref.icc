@@ -222,6 +222,7 @@ void l1ct::tdr_regionizer::Regionizer<T>::initSectors(const DetectorSector<T>& s
   assert(nsectors_ == 0);
   nsectors_ = 1;
   sectors_.push_back(sector.region);
+  sectorMapLogToPhys_.push_back(0);
   sectorMapPhysToLog_.push_back(0);
   buffers_.resize(nsectors_ * ndup_);
   if (debug_) {
