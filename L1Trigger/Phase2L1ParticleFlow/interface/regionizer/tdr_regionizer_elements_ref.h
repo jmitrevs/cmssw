@@ -161,8 +161,8 @@ namespace l1ct {
                     std::vector<size_t> srs,
                     int glbeta,
                     int glbphi,
-                    bool duplicate,       // this is mainly for GCT, is it one of the duplciates
-                    unsigned int dupNum,  // this is for the (currently unused) featrue of multiple buffers per sector
+                    bool duplicate,       // this is mainly for GCT, is it one of the duplicates
+                    unsigned int dupNum,  // this is for the (currently unused) feature of multiple buffers per sector
                     unsigned int ndup);
 
       BufferEntry<T>& front() { return data_.front(); }
@@ -292,7 +292,7 @@ namespace l1ct {
       unsigned int maxobjects_;
       /// The number of input sectors for this type of device
       unsigned int nsectors_;
-      /// the minimumum phi of this board
+      /// the minimum phi of this board
       int bigRegionMin_;
       /// the maximum phi of this board
       int bigRegionMax_;
@@ -301,7 +301,7 @@ namespace l1ct {
       /// How many buffers per link (default 1)
       unsigned int ndup_;
 
-      /// the region information assopciated with each input sector
+      /// the region information associated with each input sector
       std::vector<l1ct::PFRegionEmu> sectors_;
 
       /// the region information associated with each SR

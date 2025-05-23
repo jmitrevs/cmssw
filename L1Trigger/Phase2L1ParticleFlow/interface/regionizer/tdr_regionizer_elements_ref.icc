@@ -50,7 +50,7 @@ inline void l1ct::tdr_regionizer::Buffer<T>::addEntry(
     std::vector<size_t> srIndices,
     int glbeta,
     int glbphi,
-    bool duplicate,  // this is mainly for GCT, is it one of the duplciates
+    bool duplicate,  // this is mainly for GCT, is it one of the duplicates
     unsigned int dupNum,
     unsigned int ndup) {
   // dupNum is the duplicate number of this buffer (int range 0 to ndup_-1)
@@ -179,7 +179,7 @@ void l1ct::tdr_regionizer::Regionizer<T>::initSectors(const std::vector<Detector
   // but it's easier to create the inverse, first
 
   if (debug_) {
-    dbgCout() << "secotors.size() = " << sectors.size() << std::endl;
+    dbgCout() << "sectors.size() = " << sectors.size() << std::endl;
   }
 
   for (const auto& sector : sectors) {
@@ -194,9 +194,6 @@ void l1ct::tdr_regionizer::Regionizer<T>::initSectors(const std::vector<Detector
   }
   nsectors_ = sectors_.size();
   buffers_.resize(nsectors_ * ndup_);
-  // if (debug_) {
-  //   dbgCout() << "Number of sectors: " << nsectors_ << std::endl;
-  // }
 
   std::sort(sectorMapLogToPhys_.begin(), sectorMapLogToPhys_.end(), [this](size_t a, size_t b) {
     return this->sortSectors(a, b);
@@ -299,13 +296,6 @@ void l1ct::tdr_regionizer::Regionizer<T>::initRegions(const std::vector<PFInputR
   regions_.resize(regions.size());
   for (unsigned int i = 0; i < regions.size(); ++i) {
     regions_[i] = regions[i].region;
-    // if (debug_) {
-    //   dbgCout() << "region eta/phi: " << regions_[i].intEtaCenter() << " " << regions_[i].intPhiCenter()
-    //             << ", eta half width = " << regions_[i].hwEtaHalfWidth.to_int()
-    //             << ", phi half width = " << regions_[i].hwPhiHalfWidth.to_int()
-    //             << ", eta extra = " << regions_[i].hwEtaExtra.to_int()
-    //             << ", phi extra = " << regions_[i].hwPhiExtra.to_int() << std::endl;
-    // }
     if (isInBigRegion(regions_[i])) {
       regionmap_.push_back(i);
       if (debug_) {
@@ -477,11 +467,6 @@ void l1ct::tdr_regionizer::Regionizer<T>::run() {
       auto& buffer = buffers_[bufIdx];
       if (buffer.timeOfNextObject() >= 0) {
         processedAll = false;
-      }
-      if (debug_) {
-        dbgCout() << "Current time " << currTime << ", handling bufIdx " << bufIdx << ", logical "
-                  << logicBuffIndex(bufIdx) << " buffer.timeOfNextObject() = " << buffer.timeOfNextObject()
-                  << std::endl;
       }
       while (buffer.timeOfNextObject() == currTime) {
         // time to handle the buffer entry
@@ -665,19 +650,11 @@ std::vector<std::vector<T>> l1ct::tdr_regionizer::Regionizer<T>::fillLinks(
   for (const auto& sector : sectors) {
     if (isInBigRegionLoose(sector.region)) {
       links.emplace_back();
-      //  if (debug_) {
-      //   dbgCout() << "sector.size() = " << sector.size() << std::endl;
-      //  }
       for (unsigned int io = 0; io < sector.size() && io < nclocks_; io++) {
         links.back().push_back(sector[io]);
       }
     }
   }
-
-  // if (debug_) {
-  //   dbgCout() << "fillLinks sectors.size() = " << sectors.size()
-  //     << ", links.size() = " << links.size() << ", links[0].size() = " << links[0].size()<< std::endl;
-  // }
 
   return links;
 }
