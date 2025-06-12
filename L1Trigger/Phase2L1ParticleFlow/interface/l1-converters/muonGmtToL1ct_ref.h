@@ -14,7 +14,7 @@ namespace l1ct {
     GMTMuonDecoderEmulator(float z0Scale, float dxyScale);
     GMTMuonDecoderEmulator(const edm::ParameterSet &iConfig);
 
-    ~GMTMuonDecoderEmulator();
+    ~GMTMuonDecoderEmulator() = default;
 
     static edm::ParameterSetDescription getParameterSetDescription();
 

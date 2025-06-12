@@ -19,8 +19,6 @@ edm::ParameterSetDescription l1ct::GMTMuonDecoderEmulator::getParameterSetDescri
 l1ct::GMTMuonDecoderEmulator::GMTMuonDecoderEmulator(float z0Scale, float dxyScale)
     : z0Scale_(z0Scale), dxyScale_(dxyScale) {}
 
-l1ct::GMTMuonDecoderEmulator::~GMTMuonDecoderEmulator() {}
-
 l1ct::MuObjEmu l1ct::GMTMuonDecoderEmulator::decode(const ap_uint<64> &in) const {
   typedef ap_ufixed<13, 8, AP_TRN, AP_SAT> gmt_pt_t;
 
