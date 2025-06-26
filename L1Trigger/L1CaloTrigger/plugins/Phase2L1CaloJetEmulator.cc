@@ -683,7 +683,7 @@ void Phase2L1CaloJetEmulator::produce(edm::Event& iEvent, const edm::EventSetup&
   for (size_t i = 0; i < allJets.size(); i++) {
     jetCands->push_back(allJets.at(i));
     // Build digitized version from non-digitzed version
-    l1tp2::DigitizedL1CaloJet tempJet(true, allJets.at(i).jetEt(), allJets.at(i).jetEta(), allJets.at(i).jetPhi());
+    l1tp2::DigitizedL1CaloJet tempJet(true, allJets.at(i).jetEt(), allJets.at(i).jetPhi(), allJets.at(i).jetEta());
     DigitizedJetCands->push_back(tempJet);
   }
 
