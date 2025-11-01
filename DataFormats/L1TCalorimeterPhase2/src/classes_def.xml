@@ -34,6 +34,17 @@
   <class name="l1tp2::GCTHadDigiClusterCollection" />
   <class name="edm::Wrapper<std::vector<std::vector<l1tp2::GCTHadDigiCluster> > >" /> 
 
+  <class name="l1tp2::DigitizedCaloToCorrelatorTMI18" />
+  <class name="std::vector<l1tp2::DigitizedCaloToCorrelatorTMI18>" />
+  <class name="edm::Wrapper<std::vector<l1tp2::DigitizedCaloToCorrelatorTMI18> >" />
+
+  <class name="l1tp2::DigitizedClusterCorrelatorTMI18" />
+  <class name="l1tp2::DigitizedPFClusterCorrelatorTMI18" />
+  <class name="std::vector<l1tp2::DigitizedClusterCorrelatorTMI18>" />
+  <class name="std::vector<l1tp2::DigitizedPFClusterCorrelatorTMI18>" />
+  <class name="edm::Wrapper<std::vector<l1tp2::DigitizedClusterCorrelatorTMI18> >" />
+  <class name="edm::Wrapper<std::vector<l1tp2::DigitizedPFClusterCorrelatorTMI18> >" />
+
   <class name="l1tp2::CaloTower"  ClassVersion="3">
          <version ClassVersion="3" checksum="2608605419"/>
   </class>
