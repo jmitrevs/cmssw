@@ -194,10 +194,10 @@ from L1Trigger.Phase2L1ParticleFlow.l1ctLayer1_patternWriters_cff import *
 from L1Trigger.Phase2L1ParticleFlow.l1ctLayer1_patternWriters_cff import _eventsPerFile
 if not args.patternFilesOFF:
     process.l1tLayer1Barrel.patternWriters = cms.untracked.VPSet(*barrelWriterConfigs)
-    process.l1tLayer1BarrelTDR.patternWriters = cms.untracked.VPSet(*barrelInputWriterConfigsAPx,
-                                                                    *barrelOutputWriterConfigsAPx,
-                                                                    *barrelWriterDebugPFInConfigsAPx,
-                                                                    *barrelWriterDebugPFOutConfigsAPx
+    process.l1tLayer1BarrelTDR.patternWriters = cms.untracked.VPSet(barrelInputWriterConfigsAPx,
+                                                                    barrelOutputWriterConfigsAPx,
+                                                                    barrelWriterDebugPFInConfigsAPx,
+                                                                    barrelWriterDebugPFOutConfigsAPx
                                                                     )
     process.l1tLayer1BarrelSerenity.patternWriters = cms.untracked.VPSet(barrelSerenityVU9PPhi1Config,barrelSerenityVU13PPhi1Config)
     process.l1tLayer1HGCal.patternWriters = cms.untracked.VPSet(*hgcalWriterConfigs)
