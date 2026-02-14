@@ -146,38 +146,40 @@ process.l1tLayer1BarrelTDR.caloSectors = cms.VPSet(
         )
     )
 
-process.l1tLayer1BarrelSerenity = process.l1tLayer1Barrel.clone()
-process.l1tLayer1BarrelSerenity.regionizerAlgo = "MultififoBarrel"
-process.l1tLayer1BarrelSerenity.regionizerAlgoParameters = cms.PSet(
-        barrelSetup = cms.string("Full54"),
-        useAlsoVtxCoords = cms.bool(True),
-        nClocks = cms.uint32(54),
-        nHCalLinks = cms.uint32(2),
-        nECalLinks = cms.uint32(1),
-        nTrack = cms.uint32(22),
-        nCalo = cms.uint32(15),
-        nEmCalo = cms.uint32(12),
-        nMu = cms.uint32(2))
-process.l1tLayer1BarrelSerenity.pfAlgoParameters.nTrack = 22
-process.l1tLayer1BarrelSerenity.pfAlgoParameters.nSelCalo = 15
-process.l1tLayer1BarrelSerenity.pfAlgoParameters.nCalo = 15
-process.l1tLayer1BarrelSerenity.pfAlgoParameters.nAllNeutral = 27
-process.l1tLayer1BarrelSerenity.puAlgoParameters.nTrack = 22
-process.l1tLayer1BarrelSerenity.puAlgoParameters.nIn = 27
-process.l1tLayer1BarrelSerenity.puAlgoParameters.nOut = 27
-process.l1tLayer1BarrelSerenity.puAlgoParameters.finalSortAlgo = "FoldedHybrid"
-process.l1tLayer1BarrelSerenity.caloSectors = cms.VPSet(
-        cms.PSet(
-            etaBoundaries = cms.vdouble(-1.5, 0, 1.5),
-            phiSlices     = cms.uint32(3),
-            phiZero       = cms.double(math.pi/18)
-        ),
-        cms.PSet(
-            etaBoundaries = cms.vdouble(-1.5, 0, 1.5),
-            phiSlices     = cms.uint32(3),
-            phiZero       = cms.double(math.pi*7/18)
-        )
-    )
+# process.l1tLayer1BarrelSerenity = process.l1tLayer1Barrel.clone()
+# process.l1tLayer1BarrelSerenity.regionizerAlgo = "MultififoBarrel"
+# process.l1tLayer1BarrelSerenity.regionizerAlgoParameters = cms.PSet(
+#         barrelSetup = cms.string("Full54"),
+#         useAlsoVtxCoords = cms.bool(True),
+#         nClocks = cms.uint32(54),
+#         nHCalLinks = cms.uint32(2),
+#         nECalLinks = cms.uint32(1),
+#         nTrack = cms.uint32(22),
+#         nCalo = cms.uint32(15),
+#         nEmCalo = cms.uint32(12),
+#         nMu = cms.uint32(2))
+# process.l1tLayer1BarrelSerenity.pfAlgoParameters.nTrack = 22
+# process.l1tLayer1BarrelSerenity.pfAlgoParameters.nSelCalo = 15
+# process.l1tLayer1BarrelSerenity.pfAlgoParameters.nCalo = 15
+# process.l1tLayer1BarrelSerenity.pfAlgoParameters.nAllNeutral = 27
+# process.l1tLayer1BarrelSerenity.puAlgoParameters.nTrack = 22
+# process.l1tLayer1BarrelSerenity.puAlgoParameters.nIn = 27
+# process.l1tLayer1BarrelSerenity.puAlgoParameters.nOut = 27
+# process.l1tLayer1BarrelSerenity.puAlgoParameters.finalSortAlgo = "FoldedHybrid"
+# process.l1tLayer1BarrelSerenity.caloSectors = cms.VPSet(
+#         cms.PSet(
+#             etaBoundaries = cms.vdouble(-1.5, 0, 1.5),
+#             phiSlices     = cms.uint32(3),
+#             phiZero       = cms.double(math.pi/18)
+#         ),
+#         cms.PSet(
+#             etaBoundaries = cms.vdouble(-1.5, 0, 1.5),
+#             phiSlices     = cms.uint32(3),
+#             phiZero       = cms.double(math.pi*7/18)
+#         )
+#     )
+
+
 # process.l1tLayer1BarrelSerenity.caloSectors = cms.VPSet(
 #         cms.PSet(
 #             etaBoundaries = cms.vdouble(-1.5, 1.5),
@@ -199,7 +201,7 @@ if not args.patternFilesOFF:
                                                                     barrelWriterDebugPFInConfigsAPx,
                                                                     barrelWriterDebugPFOutConfigsAPx
                                                                     )
-    process.l1tLayer1BarrelSerenity.patternWriters = cms.untracked.VPSet(barrelSerenityVU9PPhi1Config,barrelSerenityVU13PPhi1Config)
+    # process.l1tLayer1BarrelSerenity.patternWriters = cms.untracked.VPSet(barrelSerenityVU9PPhi1Config,barrelSerenityVU13PPhi1Config)
     process.l1tLayer1HGCal.patternWriters = cms.untracked.VPSet(*hgcalWriterConfigs)
     process.l1tLayer1HGCalElliptic.patternWriters = cms.untracked.VPSet(*hgcalWriterConfigs)
     process.l1tLayer1HGCalNoTK.patternWriters = cms.untracked.VPSet(*hgcalNoTKWriterConfigs)
@@ -223,7 +225,7 @@ process.runPF = cms.Path(
         process.l1tVertexFinderEmulator +
         process.l1tLayer1Barrel +
         process.l1tLayer1BarrelTDR +
-        process.l1tLayer1BarrelSerenity +
+        # process.l1tLayer1BarrelSerenity +
         process.l1tLayer1HGCal +
         process.l1tLayer1HGCalElliptic +
         process.l1tLayer1HGCalNoTK +
@@ -262,7 +264,8 @@ if not args.patternFilesOFF:
     process.runPF.insert(process.runPF.index(process.l1tLayer2SeedConeJetWriter)+1, process.l1tLayer2SeedConeNGJetWriter)
     process.l1tLayer2SeedConeNGJetWriter.maxLinesPerFile = _eventsPerFile*54
 if not args.dumpFilesOFF:
-    for det in "Barrel", "BarrelTDR", "BarrelSerenity", "HGCal", "HGCalElliptic", "HGCalNoTK", "HF":
+    #for det in "Barrel", "BarrelTDR", "BarrelSerenity", "HGCal", "HGCalElliptic", "HGCalNoTK", "HF":
+    for det in "Barrel", "BarrelTDR", "HGCal", "HGCalElliptic", "HGCalNoTK", "HF":
         l1pf = getattr(process, 'l1tLayer1'+det)
         l1pf.dumpFileName = cms.untracked.string("TTbar_PU200_"+det+".dump")
     for det in "Barrel", "HGCal":
