@@ -880,29 +880,11 @@ void L1TCorrelatorLayer1Producer::initSectorsAndRegions(const edm::ParameterSet 
         event_.decoded.hadcalo.emplace_back(etaBoundaries[ieta], etaBoundaries[ieta + 1], phiCenter, phiWidth);
         event_.decoded.emcalo.emplace_back(etaBoundaries[ieta], etaBoundaries[ieta + 1], phiCenter, phiWidth);
         event_.raw.hgcalcluster.emplace_back(etaBoundaries[ieta], etaBoundaries[ieta + 1], phiCenter, phiWidth);
+	event_.raw.gctcluster.emplace_back(etaBoundaries[ieta], etaBoundaries[ieta + 1], phiCenter, phiWidth);
       }
     }
   }
 
-  for (const edm::ParameterSet &preg : iConfig.getParameter<edm::VParameterSet>("rawGCTSectors")) {
-    std::vector<double> etaBoundaries = preg.getParameter<std::vector<double>>("etaBoundaries");
-    if (!std::is_sorted(etaBoundaries.begin(), etaBoundaries.end()))
-      throw cms::Exception("Configuration", "caloSectors.etaBoundaries not sorted\n");
-    unsigned int phiSlices = preg.getParameter<uint32_t>("phiSlices");
-    float phiWidth = 2 * M_PI / phiSlices;
-    if (phiWidth > 2 * l1ct::Scales::maxAbsPhi())
-      throw cms::Exception("Configuration", "caloSectors phi range too large for phi_t data type");
-    double phiZero = preg.getParameter<double>("phiZero");
-    for (unsigned int ieta = 0, neta = etaBoundaries.size() - 1; ieta < neta; ++ieta) {
-      float etaWidth = etaBoundaries[ieta + 1] - etaBoundaries[ieta];
-      if (etaWidth > 2 * l1ct::Scales::maxAbsEta())
-        throw cms::Exception("Configuration", "caloSectors eta range too large for eta_t data type");
-      for (unsigned int iphi = 0; iphi < phiSlices; ++iphi) {
-        float phiCenter = reco::reducePhiRange(iphi * phiWidth + phiZero);
-        event_.raw.gctcluster.emplace_back(etaBoundaries[ieta], etaBoundaries[ieta + 1], phiCenter, phiWidth);
-      }
-    }
-  }
   event_.decoded.muon.region = l1ct::PFRegionEmu(0., 0.);  // centered at (0,0)
   event_.raw.muon.region = l1ct::PFRegionEmu(0., 0.);      // centered at (0,0)
 
@@ -1012,32 +994,35 @@ void L1TCorrelatorLayer1Producer::addHGCalHadCalo(const l1t::HGCalMulticluster &
 }
 
 // The raw to decoded index mapping is
-// raw   ->     eta+ slr1  eta- slr1  eta+ slr3  eta1 slr3
-//  0               6          0         7          1
-//  1               8          2         9          3
-//  2              10          4        11          5
+// raw   ->     eta+ slr1  eta- slr1  eta+ slr3  eta- slr3
+//  0               0          1         2          3
+//  1               4          5         6          7
+//  2               8          9        10          11
+//
+//  region indices have the order:
+//  eta- : 0 to 5 (starting from phi -20), eta+ : 6 to 11 (starting from phi -20)
 
 unsigned int L1TCorrelatorLayer1Producer::emDecodedIndex(unsigned int linkidx, unsigned int entidx) const {
   if (entidx < 17) {
-    return 2 * linkidx + 6;
-  } else if (entidx < 81) {
-    return 2 * linkidx;
-  } else if (entidx < 98) {
     return 2 * linkidx + 7;
-  } else {
+  } else if (entidx < 32) {
     return 2 * linkidx + 1;
+  } else if (entidx < 98) {
+    return 2 * linkidx + 6;
+  } else {
+    return 2 * linkidx;
   }
 }
 
 unsigned int L1TCorrelatorLayer1Producer::hadDecodedIndex(unsigned int linkidx, unsigned int entidx) const {
   if (entidx < 57) {
-    return 2 * linkidx + 6;
-  } else if (entidx < 81) {
-    return 2 * linkidx;
-  } else if (entidx < 138) {
     return 2 * linkidx + 7;
-  } else {
+  } else if (entidx < 81) {
     return 2 * linkidx + 1;
+  } else if (entidx < 138) {
+    return 2 * linkidx + 6;
+  } else {
+    return 2 * linkidx;
   }
 }
 
@@ -1046,19 +1031,17 @@ void L1TCorrelatorLayer1Producer::addGCTCaloRaw(const l1tp2::GCTDigiClusterLink 
                                                 unsigned int entidx) {
   if (auto p = std::get_if<l1tp2::GCTEmDigiCluster>(&link[entidx])) {
     // (For EM don't currently suport ideal, so it is always Emulated)
-    event_.raw.gctcluster[linkidx].obj.push_back(p->data());
     if (p->pt() > 0) {
       auto decidx = emDecodedIndex(linkidx, entidx);
+      event_.raw.gctcluster[decidx].obj.push_back(p->data());
       addDecodedGCTEmCalo(event_.decoded.emcalo[decidx], *p);
     }
   } else if (auto p = std::get_if<l1tp2::GCTHadDigiCluster>(&link[entidx])) {
     // Only do this if using Emulated GCT input, not Ideal.
-    if (hadGCTCands_.isUninitialized()) {
-      event_.raw.gctcluster[linkidx].obj.push_back(p->data());
-      if (p->pt() > 0) {
-        auto decidx = hadDecodedIndex(linkidx, entidx);
-        addDecodedGCTHadCalo(event_.decoded.hadcalo[decidx], *p);
-      }
+    if (p->pt() > 0) {
+      auto decidx = hadDecodedIndex(linkidx, entidx);
+      event_.raw.gctcluster[decidx].obj.push_back(p->data());
+      addDecodedGCTHadCalo(event_.decoded.hadcalo[decidx], *p);
     }
   } else {
     // this is the extra data that is neither had nor em
