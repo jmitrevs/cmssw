@@ -880,7 +880,26 @@ void L1TCorrelatorLayer1Producer::initSectorsAndRegions(const edm::ParameterSet 
         event_.decoded.hadcalo.emplace_back(etaBoundaries[ieta], etaBoundaries[ieta + 1], phiCenter, phiWidth);
         event_.decoded.emcalo.emplace_back(etaBoundaries[ieta], etaBoundaries[ieta + 1], phiCenter, phiWidth);
         event_.raw.hgcalcluster.emplace_back(etaBoundaries[ieta], etaBoundaries[ieta + 1], phiCenter, phiWidth);
-	event_.raw.gctcluster.emplace_back(etaBoundaries[ieta], etaBoundaries[ieta + 1], phiCenter, phiWidth);
+      }
+    }
+  }
+
+  for (const edm::ParameterSet &preg : iConfig.getParameter<edm::VParameterSet>("rawGCTSectors")) {
+    std::vector<double> etaBoundaries = preg.getParameter<std::vector<double>>("etaBoundaries");
+    if (!std::is_sorted(etaBoundaries.begin(), etaBoundaries.end()))
+      throw cms::Exception("Configuration", "caloSectors.etaBoundaries not sorted\n");
+    unsigned int phiSlices = preg.getParameter<uint32_t>("phiSlices");
+    float phiWidth = 2 * M_PI / phiSlices;
+    if (phiWidth > 2 * l1ct::Scales::maxAbsPhi())
+      throw cms::Exception("Configuration", "caloSectors phi range too large for phi_t data type");
+    double phiZero = preg.getParameter<double>("phiZero");
+    for (unsigned int ieta = 0, neta = etaBoundaries.size() - 1; ieta < neta; ++ieta) {
+      float etaWidth = etaBoundaries[ieta + 1] - etaBoundaries[ieta];
+      if (etaWidth > 2 * l1ct::Scales::maxAbsEta())
+        throw cms::Exception("Configuration", "caloSectors eta range too large for eta_t data type");
+      for (unsigned int iphi = 0; iphi < phiSlices; ++iphi) {
+        float phiCenter = reco::reducePhiRange(iphi * phiWidth + phiZero);
+        event_.raw.gctcluster.emplace_back(etaBoundaries[ieta], etaBoundaries[ieta + 1], phiCenter, phiWidth);
       }
     }
   }
@@ -1031,16 +1050,16 @@ void L1TCorrelatorLayer1Producer::addGCTCaloRaw(const l1tp2::GCTDigiClusterLink 
                                                 unsigned int entidx) {
   if (auto p = std::get_if<l1tp2::GCTEmDigiCluster>(&link[entidx])) {
     // (For EM don't currently suport ideal, so it is always Emulated)
+    event_.raw.gctcluster[linkidx].obj.push_back(p->data());
     if (p->pt() > 0) {
       auto decidx = emDecodedIndex(linkidx, entidx);
-      event_.raw.gctcluster[decidx].obj.push_back(p->data());
       addDecodedGCTEmCalo(event_.decoded.emcalo[decidx], *p);
     }
   } else if (auto p = std::get_if<l1tp2::GCTHadDigiCluster>(&link[entidx])) {
     // Only do this if using Emulated GCT input, not Ideal.
+    event_.raw.gctcluster[linkidx].obj.push_back(p->data());
     if (p->pt() > 0) {
       auto decidx = hadDecodedIndex(linkidx, entidx);
-      event_.raw.gctcluster[decidx].obj.push_back(p->data());
       addDecodedGCTHadCalo(event_.decoded.hadcalo[decidx], *p);
     }
   } else {
