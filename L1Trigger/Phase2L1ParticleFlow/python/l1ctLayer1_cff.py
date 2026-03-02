@@ -118,7 +118,6 @@ l1tLayer1Barrel = cms.EDProducer("L1TCorrelatorLayer1Producer",
             phiZero       = cms.double(math.pi/18)
         ),
     ),
-
     # these are the sectors for the raw GCT clusters; logical sectors can be combined
     rawGCTSectors = cms.VPSet(
         cms.PSet(
