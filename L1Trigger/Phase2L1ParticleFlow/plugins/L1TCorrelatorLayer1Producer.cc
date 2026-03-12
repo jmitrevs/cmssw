@@ -1014,9 +1014,9 @@ void L1TCorrelatorLayer1Producer::addHGCalHadCalo(const l1t::HGCalMulticluster &
 
 // The raw to decoded index mapping is
 // raw   ->     eta+ slr1  eta- slr1  eta+ slr3  eta- slr3
-//  0               0          1         2          3
-//  1               4          5         6          7
-//  2               8          9        10          11
+//  0               7          1         6          0
+//  1               9          3         8          2
+//  2              11          5        10          4
 //
 //  region indices have the order:
 //  eta- : 0 to 5 (starting from phi -20), eta+ : 6 to 11 (starting from phi -20)
@@ -1024,23 +1024,23 @@ void L1TCorrelatorLayer1Producer::addHGCalHadCalo(const l1t::HGCalMulticluster &
 unsigned int L1TCorrelatorLayer1Producer::emDecodedIndex(unsigned int linkidx, unsigned int entidx) const {
   if (entidx < 17) {
     return 2 * linkidx + 7;
-  } else if (entidx < 32) {
+  } else if (entidx < 33) {
     return 2 * linkidx + 1;
-  } else if (entidx < 98) {
+  } else if (entidx >= 82 && entidx < 98) {
     return 2 * linkidx + 6;
-  } else {
+  } else if (entidx >= 98 && entidx < 114) {
     return 2 * linkidx;
   }
 }
 
 unsigned int L1TCorrelatorLayer1Producer::hadDecodedIndex(unsigned int linkidx, unsigned int entidx) const {
-  if (entidx < 57) {
+  if (entidx >= 33 && entidx < 57) {
     return 2 * linkidx + 7;
-  } else if (entidx < 81) {
+  } else if (entidx >= 57 && entidx < 81) {
     return 2 * linkidx + 1;
-  } else if (entidx < 138) {
+  } else if (entidx >= 114 && entidx < 138) {
     return 2 * linkidx + 6;
-  } else {
+  } else if (entidx >= 138) {
     return 2 * linkidx;
   }
 }
