@@ -75,14 +75,14 @@ process.l1tNNTauProducerPuppi = l1tNNTauProducerPuppi.clone()
 from L1Trigger.Phase2L1ParticleFlow.l1tMETPFProducer_cfi import l1tMETPFProducer
 process.l1tMETPFProducer = l1tMETPFProducer.clone()
 
-from L1Trigger.L1CaloTrigger.l1tPhase2CaloToCorrelatorTMI18_cfi import l1tPhase2CaloToCorrelatorTMI18
-process.l1tPhase2CaloToCorrelatorTMI18 = l1tPhase2CaloToCorrelatorTMI18.clone()
+from L1Trigger.L1CaloTrigger.l1tPhase2CaloToCorrelatorTM18_cfi import l1tPhase2CaloToCorrelatorTM18
+process.l1tPhase2CaloToCorrelatorTM18 = l1tPhase2CaloToCorrelatorTM18.clone()
 
 process.L1TInputTask = cms.Task(
         process.l1tPhase2L1CaloEGammaEmulator,
         process.l1tPhase2CaloPFClusterEmulator,
         process.l1tPhase2GCTBarrelToCorrelatorLayer1Emulator,
-        process.l1tPhase2CaloToCorrelatorTMI18,
+        process.l1tPhase2CaloToCorrelatorTM18,
         process.l1tSAMuonsGmt,
         process.l1tGTTInputProducer,
         process.l1tTrackSelectionProducer,
