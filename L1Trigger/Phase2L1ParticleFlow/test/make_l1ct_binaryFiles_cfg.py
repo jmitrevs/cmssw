@@ -135,7 +135,8 @@ process.l1tLayer1BarrelTDR.regionizerAlgoParameters = cms.PSet(
         nEmCalo = cms.uint32(12),
         nMu = cms.uint32(2),
         debug = cms.untracked.bool(False),
-        debug_emcalo = cms.untracked.bool(False)
+        debug_emcalo = cms.untracked.bool(False),
+        debug_tk = cms.untracked.bool(False)
     )
 process.l1tLayer1BarrelTDR.pfAlgoParameters.nTrack = 22
 process.l1tLayer1BarrelTDR.pfAlgoParameters.nSelCalo = 15
@@ -183,7 +184,8 @@ if not args.patternFilesOFF:
     process.l1tLayer1BarrelTDR.patternWriters = cms.untracked.VPSet(barrelInputWriterConfigsAPx,
                                                                     barrelOutputWriterConfigsAPx,
                                                                     barrelWriterDebugPFInConfigsAPx,
-                                                                    barrelWriterDebugPFOutConfigsAPx
+                                                                    barrelWriterDebugPFOutConfigsAPx,
+                                                                    barrelWriterDebugEGConfigsAPx
                                                                     )
     
     # The barrel serenity writers need some updates first
