@@ -54,6 +54,15 @@ l1tLayer1Barrel = cms.EDProducer("L1TCorrelatorLayer1Producer",
         ),
     ),
     gctHadInputConversionAlgo = cms.string("Emulator"),
+    gctHadInputConversionParameters = cms.PSet(
+        gctHadCorrector = cms.string("L1Trigger/Phase2L1ParticleFlow/data/hadcorr_barrel.root"),
+        gctHadResol = cms.PSet(
+			etaBins = cms.vdouble( 0.700,  1.200,  1.600),
+			offset  = cms.vdouble( 3.757,  3.197,  1.744),
+			scale   = cms.vdouble( 0.175,  0.222,  0.354),
+			kind    = cms.string('calo'),
+        ),
+    ),
     regionizerAlgo = cms.string("Ideal"),
     pfAlgo = cms.string("PFAlgo3"),
     pfAlgoParameters = cms.PSet(
