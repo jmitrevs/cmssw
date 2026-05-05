@@ -1,5 +1,6 @@
 import argparse
 import sys
+import math
 
 # example: cmsRun L1Trigger/Phase2L1ParticleFlow/test/make_l1ct_patternFiles_cfg.py --patternFilesOFF
 # example: cmsRun L1Trigger/Phase2L1ParticleFlow/test/make_l1ct_patternFiles_cfg.py --dumpFilesOFF --serenity
@@ -41,27 +42,28 @@ process.source = cms.Source("PoolSource",
             "drop l1tPFClusters_*_*_*",
             "drop l1tPFTracks_*_*_*",
             "drop l1tPFCandidates_*_*_*",
-            "drop l1tTkPrimaryVertexs_*_*_*")
+            "drop l1tTkPrimaryVertexs_*_*_*"),
+    skipEvents = cms.untracked.uint32(0),
 )
 
 process.load('Configuration.Geometry.GeometryExtendedRun4D110Reco_cff')
 process.load('Configuration.Geometry.GeometryExtendedRun4D110_cff')
 process.load('Configuration.StandardSequences.MagneticField_cff')
-process.load('Configuration.StandardSequences.SimL1Emulator_cff')
 process.load('SimCalorimetry.HcalTrigPrimProducers.hcaltpdigi_cff') # needed to read HCal TPs
-process.load('SimCalorimetry.HGCalSimProducers.hgcalDigitizer_cfi') # needed for HGCAL_noise_fC
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
-process.load('RecoMET.Configuration.GenMETParticles_cff')
-process.load('RecoMET.METProducers.genMetTrue_cfi')
-
-from RecoJets.JetProducers.ak4PFJets_cfi import ak4PFJets
-from RecoMET.METProducers.pfMet_cfi import pfMet
 
 from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, '141X_mcRun4_realistic_v3', '')
 
-# NOTE: we need this to avoid saving the stubs
-process.l1tTrackSelectionProducer.processSimulatedTracks = False
+process.load('L1Trigger.Phase2L1ParticleFlow.l1ctLayer1_cff')
+process.load('L1Trigger.Phase2L1ParticleFlow.l1ctLayer2EG_cff')
+process.load('L1Trigger.Phase2L1ParticleFlow.l1pfJetMet_cff')
+process.load('L1Trigger.L1TTrackMatch.l1tGTTInputProducer_cfi')
+process.load('L1Trigger.L1TTrackMatch.l1tTrackSelectionProducer_cfi')
+process.l1tTrackSelectionProducer.processSimulatedTracks = False # these would need stubs, and are not used anyway
+process.load('L1Trigger.VertexFinder.l1tVertexProducer_cfi')
+from L1Trigger.Configuration.SimL1Emulator_cff import l1tSAMuonsGmt
+process.l1tSAMuonsGmt = l1tSAMuonsGmt.clone()
 
 from L1Trigger.L1CaloTrigger.l1tPhase2L1CaloEGammaEmulator_cfi import l1tPhase2L1CaloEGammaEmulator
 process.l1tPhase2L1CaloEGammaEmulator = l1tPhase2L1CaloEGammaEmulator.clone()
@@ -72,12 +74,6 @@ process.l1tPhase2CaloPFClusterEmulator = l1tPhase2CaloPFClusterEmulator.clone()
 from L1Trigger.L1CaloTrigger.l1tPhase2GCTBarrelToCorrelatorLayer1Emulator_cfi import l1tPhase2GCTBarrelToCorrelatorLayer1Emulator
 process.l1tPhase2GCTBarrelToCorrelatorLayer1Emulator = l1tPhase2GCTBarrelToCorrelatorLayer1Emulator.clone()
 
-from L1Trigger.Phase2L1ParticleFlow.L1NNTauProducer_cff import l1tNNTauProducerPuppi
-process.l1tNNTauProducerPuppi = l1tNNTauProducerPuppi.clone()
-
-from L1Trigger.Phase2L1ParticleFlow.l1tMETPFProducer_cfi import l1tMETPFProducer
-process.l1tMETPFProducer = l1tMETPFProducer.clone()
-
 from L1Trigger.L1CaloTrigger.l1tPhase2CaloToCorrelatorTM18_cfi import l1tPhase2CaloToCorrelatorTM18
 process.l1tPhase2CaloToCorrelatorTM18 = l1tPhase2CaloToCorrelatorTM18.clone()
 
@@ -86,23 +82,8 @@ process.L1TInputTask = cms.Task(
         process.l1tPhase2CaloPFClusterEmulator,
         process.l1tPhase2GCTBarrelToCorrelatorLayer1Emulator,
         process.l1tPhase2CaloToCorrelatorTM18,
-        process.l1tSAMuonsGmt,
-        process.l1tGTTInputProducer,
-        process.l1tTrackSelectionProducer,
-        process.l1tVertexFinderEmulator,
-        process.L1TLayer1TaskInputsTask,
-        process.L1TLayer2EGTask,
-        process.l1tMETPFProducer)
+        process.l1tSAMuonsGmt)
 
-process.centralGen = cms.EDFilter("CandPtrSelector", src = cms.InputTag("genParticlesForMETAllVisible"), cut = cms.string("abs(eta) < 2.4"))
-process.barrelGen = cms.EDFilter("CandPtrSelector", src = cms.InputTag("genParticlesForMETAllVisible"), cut = cms.string("abs(eta) < 1.5"))
-process.genMetCentralTrue = process.genMetTrue.clone(src = cms.InputTag("centralGen"))
-process.L1TInputTask.add(
-    process.genParticlesForMETAllVisible,
-    process.centralGen,
-    process.barrelGen,
-    process.genMetCentralTrue
-)
 
 from L1Trigger.Phase2L1ParticleFlow.l1tJetFileWriter_cfi import l1tSeededConeJetFileWriter
 l1ctLayer2SCJetsProducts = cms.VPSet([cms.PSet(jets = cms.InputTag("l1tSC4PFL1PuppiCorrectedEmulator"),
@@ -162,7 +143,7 @@ process.l1tLayer1BarrelSerenity.regionizerAlgoParameters = cms.PSet(
         nCalo = cms.uint32(15),
         nEmCalo = cms.uint32(12),
         nMu = cms.uint32(2),
-        tmux6GCTinput = cms.bool(True),
+        tmux6GCTinput = cms.bool(False),
 )
 process.l1tLayer1BarrelSerenity.pfAlgoParameters.nTrack = 22
 process.l1tLayer1BarrelSerenity.pfAlgoParameters.nSelCalo = 15
