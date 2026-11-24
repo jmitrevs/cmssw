@@ -310,3 +310,14 @@ if not args.patternFilesOFF:
     )
 
 process.source.fileNames  = [ '/store/cmst3/group/l1tr/FastPUPPI/14_2_X/fpinputs_140X/v0/TT_PU200/inputs140X_1.root' ]
+
+#####################################################################################################################
+## Histograms of the per-event number of pfcharged/pfphoton/pfneutral/pfmuon objects with pt > 0
+## (summed over regions) for l1tLayer1BarrelTDR
+process.TFileService = cms.Service("TFileService", fileName = cms.string("l1ct_pfcounts.root"))
+process.l1tPFCountHistos = cms.EDAnalyzer("L1TCorrelatorLayer1PFCountHistos",
+    producers = cms.vstring("l1tLayer1BarrelTDR"),
+    nBins = cms.int32(1000),
+    xMax = cms.double(1000.),
+)
+process.pfCountHistos = cms.EndPath(process.l1tPFCountHistos)

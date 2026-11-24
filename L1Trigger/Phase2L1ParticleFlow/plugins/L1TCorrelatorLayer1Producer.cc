@@ -389,6 +389,10 @@ L1TCorrelatorLayer1Producer::L1TCorrelatorLayer1Producer(const edm::ParameterSet
     produces<std::vector<unsigned>>(std::string("vecNPF") + l1ct::OutputRegion::objTypeName[i]);
     produces<std::vector<unsigned>>(std::string("vecNPuppi") + l1ct::OutputRegion::objTypeName[i]);
   }
+  // per-event counts (summed over regions) of the PF output vectors before mergeNeutrals, objects with hwPt > 0
+  for (const char *name : {"nOutPFcharged", "nOutPFphoton", "nOutPFneutral", "nOutPFmuon"}) {
+    produces<unsigned int>(name);
+  }
 
   initSectorsAndRegions(iConfig);
 
@@ -663,9 +667,19 @@ void L1TCorrelatorLayer1Producer::produce(edm::Event &iEvent, const edm::EventSe
 #endif
 
   // Then run PF in each region
+  // per-event counts (objects with pt > 0, summed over regions) of the PF output vectors, taken
+  // before mergeNeutrals so that photons and neutral hadrons are still in separate vectors
+  auto countPos = [](const auto &v) {
+    return std::count_if(v.begin(), v.end(), [](const auto &p) { return p.hwPt > 0; });
+  };
+  unsigned int nPFCharged = 0, nPFPhoton = 0, nPFNeutral = 0, nPFMuon = 0;
   event_.out.resize(event_.pfinputs.size());
   for (unsigned int ir = 0, nr = event_.pfinputs.size(); ir < nr; ++ir) {
     l1pfalgo_->run(event_.pfinputs[ir], event_.out[ir]);
+    nPFCharged += countPos(event_.out[ir].pfcharged);
+    nPFPhoton += countPos(event_.out[ir].pfphoton);
+    nPFNeutral += countPos(event_.out[ir].pfneutral);
+    nPFMuon += countPos(event_.out[ir].pfmuon);
     l1pfalgo_->mergeNeutrals(event_.out[ir]);
     l1tkegalgo_->run(event_.pfinputs[ir], event_.out[ir]);
     l1tkegalgo_->runIso(event_.pfinputs[ir], event_.pvs, event_.out[ir]);
@@ -726,6 +740,11 @@ void L1TCorrelatorLayer1Producer::produce(edm::Event &iEvent, const edm::EventSe
     addUInt(tmPuppi.second, std::string("maxNPuppi") + l1ct::OutputRegion::objTypeName[i], iEvent);
     iEvent.put(std::move(vecPuppi), std::string("vecNPuppi") + l1ct::OutputRegion::objTypeName[i]);
   }
+
+  addUInt(nPFCharged, "nOutPFcharged", iEvent);
+  addUInt(nPFPhoton, "nOutPFphoton", iEvent);
+  addUInt(nPFNeutral, "nOutPFneutral", iEvent);
+  addUInt(nPFMuon, "nOutPFmuon", iEvent);
 
   if (fRegionDump_.is_open()) {
     event_.write(fRegionDump_);
