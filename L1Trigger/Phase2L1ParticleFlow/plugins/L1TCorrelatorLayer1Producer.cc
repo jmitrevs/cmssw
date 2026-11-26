@@ -389,7 +389,8 @@ L1TCorrelatorLayer1Producer::L1TCorrelatorLayer1Producer(const edm::ParameterSet
     produces<std::vector<unsigned>>(std::string("vecNPF") + l1ct::OutputRegion::objTypeName[i]);
     produces<std::vector<unsigned>>(std::string("vecNPuppi") + l1ct::OutputRegion::objTypeName[i]);
   }
-  // per-event counts (summed over regions) of the PF output vectors before mergeNeutrals, objects with hwPt > 0
+  // per-event counts (summed over regions) of the PF output vectors before mergeNeutrals,
+  // objects with hwPt > 0 in the fiducial area of their region
   for (const char *name : {"nOutPFcharged", "nOutPFphoton", "nOutPFneutral", "nOutPFmuon"}) {
     produces<unsigned int>(name);
   }
@@ -668,18 +669,21 @@ void L1TCorrelatorLayer1Producer::produce(edm::Event &iEvent, const edm::EventSe
 
   // Then run PF in each region
   // per-event counts (objects with pt > 0, summed over regions) of the PF output vectors, taken
-  // before mergeNeutrals so that photons and neutral hadrons are still in separate vectors
-  auto countPos = [](const auto &v) {
-    return std::count_if(v.begin(), v.end(), [](const auto &p) { return p.hwPt > 0; });
+  // before mergeNeutrals so that photons and neutral hadrons are still in separate vectors.
+  // Only objects in the fiducial area of their region are counted, to avoid double counting in the
+  // overlaps between regions (same selection as fetchPF)
+  auto countPos = [](const auto &v, const l1ct::PFRegionEmu &reg) {
+    return std::count_if(
+        v.begin(), v.end(), [&reg](const auto &p) { return p.hwPt > 0 && reg.isFiducial(p); });
   };
   unsigned int nPFCharged = 0, nPFPhoton = 0, nPFNeutral = 0, nPFMuon = 0;
   event_.out.resize(event_.pfinputs.size());
   for (unsigned int ir = 0, nr = event_.pfinputs.size(); ir < nr; ++ir) {
     l1pfalgo_->run(event_.pfinputs[ir], event_.out[ir]);
-    nPFCharged += countPos(event_.out[ir].pfcharged);
-    nPFPhoton += countPos(event_.out[ir].pfphoton);
-    nPFNeutral += countPos(event_.out[ir].pfneutral);
-    nPFMuon += countPos(event_.out[ir].pfmuon);
+    nPFCharged += countPos(event_.out[ir].pfcharged, event_.pfinputs[ir].region);
+    nPFPhoton += countPos(event_.out[ir].pfphoton, event_.pfinputs[ir].region);
+    nPFNeutral += countPos(event_.out[ir].pfneutral, event_.pfinputs[ir].region);
+    nPFMuon += countPos(event_.out[ir].pfmuon, event_.pfinputs[ir].region);
     l1pfalgo_->mergeNeutrals(event_.out[ir]);
     l1tkegalgo_->run(event_.pfinputs[ir], event_.out[ir]);
     l1tkegalgo_->runIso(event_.pfinputs[ir], event_.pvs, event_.out[ir]);
