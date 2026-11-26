@@ -87,6 +87,12 @@ L1TCorrelatorLayer1PatternFileWriter::L1TCorrelatorLayer1PatternFileWriter(const
       channelIdsOutput_[l1t::demo::LinkId{"puppi", i}].push_back(outputLinksPuppi_[i]);
     }
     channelSpecsOutput_["puppi"] = {tmuxFactor_, 0};
+    outputLinksSortedPF_ = iConfig.getParameter<std::vector<uint32_t>>("outputLinksSortedPF");
+    for (unsigned int i = 0; i < outputLinksSortedPF_.size(); ++i) {
+      channelIdsOutput_[l1t::demo::LinkId{"sortedpf", i}].push_back(outputLinksSortedPF_[i]);
+    }
+    if (!outputLinksSortedPF_.empty())
+      channelSpecsOutput_["sortedpf"] = {tmuxFactor_, 0};
     nPuppiFramesPerRegion_ = (nOutputFramesPerBX_ * tmuxFactor_) / outputRegions_.size();
     if (partition_ == Partition::Barrel || partition_ == Partition::HGCal) {
       outputLinkEgamma_ = iConfig.getParameter<int32_t>("outputLinkEgamma");
@@ -236,7 +242,8 @@ std::unique_ptr<edm::ParameterDescriptionNode> L1TCorrelatorLayer1PatternFileWri
 }
 std::unique_ptr<edm::ParameterDescriptionNode> L1TCorrelatorLayer1PatternFileWriter::describePuppi() {
   return edm::ParameterDescription<std::vector<uint32_t>>("outputRegions", std::vector<uint32_t>(), true) and
-         edm::ParameterDescription<std::vector<uint32_t>>("outputLinksPuppi", std::vector<uint32_t>(), true);
+         edm::ParameterDescription<std::vector<uint32_t>>("outputLinksPuppi", std::vector<uint32_t>(), true) and
+         edm::ParameterDescription<std::vector<uint32_t>>("outputLinksSortedPF", std::vector<uint32_t>(), true);
 }
 std::unique_ptr<edm::ParameterDescriptionNode> L1TCorrelatorLayer1PatternFileWriter::describeEG() {
   return edm::ParameterDescription<int32_t>("outputLinkEgamma", -1, true) and
@@ -268,6 +275,8 @@ void L1TCorrelatorLayer1PatternFileWriter::write(const l1ct::Event& event) {
   if (writeOutputs_) {
     l1t::demo::EventData outputs;
     writePuppi(event, outputs);
+    if (!outputLinksSortedPF_.empty())
+      writeSortedPF(event, outputs);
     if (outputLinkEgamma_ != -1)
       writeEgamma(event, outputs);
     outputFileWriter_->addEvent(outputs);
@@ -671,6 +680,20 @@ void L1TCorrelatorLayer1PatternFileWriter::writePuppi(const l1ct::Event& event, 
   }
   for (unsigned int i = 0; i < n; ++i) {
     out.add(l1t::demo::LinkId{"puppi", i}, links[i]);
+  }
+}
+
+// The PF sorter output, as the sorter leaves it in event.sortedpf: entry k goes to link
+// k % n, so a sorter that keeps its firmware layout (PFSorterBarrelEmulator: one entry per
+// output fiber and clock, empty ones included) gives the fibers word by word.
+void L1TCorrelatorLayer1PatternFileWriter::writeSortedPF(const l1ct::Event& event, l1t::demo::EventData& out) {
+  unsigned int n = outputLinksSortedPF_.size();
+  std::vector<std::vector<ap_uint<64>>> links(n);
+  for (unsigned int k = 0, nk = event.sortedpf.size(); k < nk; ++k) {
+    links[k % n].push_back(event.sortedpf[k].pack());
+  }
+  for (unsigned int i = 0; i < n; ++i) {
+    out.add(l1t::demo::LinkId{"sortedpf", i}, links[i]);
   }
 }
 

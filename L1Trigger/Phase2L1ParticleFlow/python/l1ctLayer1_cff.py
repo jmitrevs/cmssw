@@ -8,6 +8,7 @@ from L1Trigger.Phase2L1ParticleFlow.pfClustersFromCombinedCalo_cff import l1tPFC
 from L1Trigger.Phase2L1ParticleFlow.l1TkEgAlgoEmulator_cfi import tkEgAlgoParameters,tkEgSorterParameters
 
 from L1Trigger.Phase2L1ParticleFlow.mlAssociation_cfi import NNVtxAssociationPSet
+from L1Trigger.Phase2L1ParticleFlow.l1ctLayer1_patternWriters_cff import srOrder
 switchOnNNAssoc = cms.bool(False)
 
 virtBoard0 = (5, 14, 23, 32, 41, 50, 6, 15, 24, 33, 42, 51, 7, 16, 25, 34, 43, 52)
@@ -64,6 +65,15 @@ l1tLayer1Barrel = cms.EDProducer("L1TCorrelatorLayer1Producer",
     regionizerAlgo = cms.string("Ideal"),
     pfAlgo = cms.string("PFAlgo3"),
     pfSorterAlgo = cms.string("Barrel"),
+    pfSorterParameters = cms.PSet(  # the PF scouting output of the APx barrel board
+        nSlotsCharged = cms.uint32(22),  # PF slots per region the firmware carries
+        nSlotsNeutral = cms.uint32(27),  # (merged neutrals: 12 photons, then 15 hadrons)
+        nTicks = cms.uint32(3),          # slots per link and region
+        nOutputs = cms.uint32(3),        # output fibers
+        nClocks = cms.uint32(162),       # read-out clocks per event
+        nDepth = cms.uint32(162),        # objects per link and event
+        regionOrder = cms.vuint32(*srOrder),  # the order the PF algorithm outputs the regions
+    ),
     pfAlgoParameters = cms.PSet(
         nTrack = cms.uint32(25),
         nCalo = cms.uint32(18),

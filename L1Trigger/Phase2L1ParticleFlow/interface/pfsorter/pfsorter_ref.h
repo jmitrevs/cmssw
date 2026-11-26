@@ -921,61 +921,195 @@ namespace l1ct {
     unsigned int nSlots_;
   };
 
-  // The barrel version of the sorter: what it should do is sort the barrel PF candidates
-  // the way PFSorterEmulator does for the endcap ones, but it is not written yet. For now
-  // it does nothing and gives back an empty collection of candidates. It derives from
-  // PFSorterEmulator (and its run() and step() hide the ones of the base classes, so that
-  // nothing can leak out of the stub) so that L1TCorrelatorLayer1Producer can use it in
-  // its place through a PFSorterEmulator pointer.
+  // ------------------------------------------------------------------------
+  // The barrel version of the sorter: the PF scouting output of the APx barrel board
+  // (pf_scouting.vhd in the correlator-layer1 APx firmware). It is not a merge tree but
+  // a 17-to-3 picker, with no pt sorting:
+  //
+  //  * Links: the PF algorithm gives all the candidates of one region together, and they
+  //    are spread over nLinks() links, nTicks (3) per link and region, as the PUPPI
+  //    inputs are: charged link l (0 ... nLinksCharged()-1) carries pfcharged slots
+  //    nTicks*l ... nTicks*l+nTicks-1, neutral link nLinksCharged()+l the same slots of
+  //    pfneutral (after PFAlgo3Emulator::mergeNeutrals: the nPhoton padded photons
+  //    first, then the neutral hadrons). With 22 charged and 27 neutral slots that is 8 +
+  //    9 = 17 links, links 8-11 carrying the photons and 12-16 the neutral hadrons. Slots
+  //    beyond nSlotsCharged / nSlotsNeutral are not carried.
+  //  * Conversion: each candidate becomes a PuppiObj in global coordinates with the
+  //    region it comes from (l1ct::pfsorter::toPuppi: empty and non-fiducial candidates
+  //    are dropped, a neutral one gets a puppi weight of 1).
+  //  * Buffers: one per link, filled in arrival order, region by region in the order the
+  //    PF algorithm outputs them (regionOrder, the board's region order, if it has one
+  //    entry per region; index order otherwise), at most nDepth
+  //    objects per link and event.
+  //  * Picker: then nClocks clocks of read-out. On each clock the first (lowest-index)
+  //    nOutputs links that still hold objects give one object each, to output fibers 0,
+  //    1, 2 in that order. What is left after nClocks clocks is dropped, which hits the
+  //    highest-index links first (neutral hadrons, then photons, then the last charged
+  //    slots).
+  //
+  // run(l1ct::Event &) leaves event.sortedpf in the firmware layout: nClocks * nOutputs
+  // entries, entry nOutputs * clock + fiber being what that fiber carries on that clock
+  // (empty, hwPt == 0, if nothing). The pattern file writer writes it as it is
+  // (outputLinksSortedPF), and putSortedPF of L1TCorrelatorLayer1Producer skips the
+  // empty entries.
+  //
+  // It derives from PFSorterEmulator only so that L1TCorrelatorLayer1Producer can use it
+  // through a PFSorterEmulator pointer: the merge tree of the base classes is not used.
   class PFSorterBarrelEmulator : public PFSorterEmulator {
   public:
-    typedef l1ct::pfsorter::PFParticleEmu PFParticle;
-
-    PFSorterBarrelEmulator(unsigned int nlinks = 2, unsigned int noutputs = 3, unsigned int nclocks = 162)
-        : PFSorterEmulator(nlinks, 0, noutputs, nclocks, l1ct::pfsorter::nObjPerLink) {}
-
-    // one event's worth of barrel PF candidates: an empty collection
-    void run(l1ct::Event &event) override { event.sortedpf.clear(); }
-
-    // single clock cycle: nothing comes out
-    bool step(bool newEvent,
-              const std::vector<l1ct::PFRegionEmu> &regions,
-              const std::vector<PFParticle> &inputs,
-              l1ct::PuppiObjEmu &out) {
-      out.clear();
-      return false;
+    PFSorterBarrelEmulator(unsigned int nslotsCharged = 22,
+                           unsigned int nslotsNeutral = 27,
+                           unsigned int nticks = 3,
+                           unsigned int noutputs = 3,
+                           unsigned int nclocks = 162,
+                           unsigned int ndepth = 162,
+                           const std::vector<uint32_t> &regionOrder = std::vector<uint32_t>())
+        : PFSorterEmulator(2, 0, noutputs, nclocks, l1ct::pfsorter::nObjPerLink),
+          nSlotsCharged_(nslotsCharged),
+          nSlotsNeutral_(nslotsNeutral),
+          nTicks_(nticks),
+          nOutputs_(noutputs),
+          nClocks_(nclocks),
+          nDepth_(ndepth),
+          regionOrder_(regionOrder) {
+      assert(nticks > 0 && noutputs > 0);
     }
 
-    // same, when all the links carry particles of the same region
-    bool step(bool newEvent,
-              const l1ct::PFRegionEmu &region,
-              const std::vector<PFParticle> &inputs,
-              l1ct::PuppiObjEmu &out) {
-      out.clear();
-      return false;
+#ifdef CMSSW_GIT_HASH
+    PFSorterBarrelEmulator(const edm::ParameterSet &iConfig)
+        : PFSorterBarrelEmulator(iConfig.getParameter<uint32_t>("nSlotsCharged"),
+                                 iConfig.getParameter<uint32_t>("nSlotsNeutral"),
+                                 iConfig.getParameter<uint32_t>("nTicks"),
+                                 iConfig.getParameter<uint32_t>("nOutputs"),
+                                 iConfig.getParameter<uint32_t>("nClocks"),
+                                 iConfig.getParameter<uint32_t>("nDepth"),
+                                 iConfig.getParameter<std::vector<uint32_t>>("regionOrder")) {}
+
+    static edm::ParameterSetDescription getParameterSetDescription() {
+      edm::ParameterSetDescription description;
+      description.add<uint32_t>("nSlotsCharged", 22);
+      description.add<uint32_t>("nSlotsNeutral", 27);
+      description.add<uint32_t>("nTicks", 3);
+      description.add<uint32_t>("nOutputs", 3);
+      description.add<uint32_t>("nClocks", 162);
+      description.add<uint32_t>("nDepth", 162);
+      // empty (or not one entry per region) = 0, 1, ...
+      description.add<std::vector<uint32_t>>("regionOrder", std::vector<uint32_t>());
+      return description;
+    }
+#endif
+
+    unsigned int nSlotsCharged() const { return nSlotsCharged_; }
+    unsigned int nSlotsNeutral() const { return nSlotsNeutral_; }
+    unsigned int nTicks() const { return nTicks_; }
+    unsigned int nLinksCharged() const { return (nSlotsCharged_ + nTicks_ - 1) / nTicks_; }
+    unsigned int nLinksNeutral() const { return (nSlotsNeutral_ + nTicks_ - 1) / nTicks_; }
+    unsigned int nLinks() const { return nLinksCharged() + nLinksNeutral(); }
+    unsigned int nOutputs() const { return nOutputs_; }
+    unsigned int nClocks() const { return nClocks_; }
+    unsigned int nDepth() const { return nDepth_; }
+    const std::vector<uint32_t> &regionOrder() const { return regionOrder_; }
+
+    // counts of the last event
+    unsigned int nIn() const { return nIn_; }            // objects stored in the link buffers
+    unsigned int nOut() const { return nOut_; }          // objects sent on the fibers
+    unsigned int nDropped() const { return nDropped_; }  // objects not sent (buffers full or out of time)
+
+    // Fill the link buffers of one event: links[l] gets the objects of link l, converted,
+    // in arrival order. Returns the number of objects stored; those that did not fit
+    // (more than nDepth on a link) are counted in nDropped().
+    unsigned int makeLinks(const std::vector<l1ct::PFInputRegion> &pfinputs,
+                           const std::vector<l1ct::OutputRegion> &pfouts,
+                           std::vector<std::vector<l1ct::PuppiObjEmu>> &links) {
+      assert(pfouts.size() == pfinputs.size());
+      const unsigned int nlc = nLinksCharged(), nl = nLinks(), nreg = pfouts.size();
+      links.clear();
+      links.resize(nl);
+      nIn_ = nOut_ = nDropped_ = 0;
+      // regionOrder is the order of one board layout: a setup with another number of
+      // regions (e.g. a clone of the barrel producer with fewer regions) takes them in
+      // index order
+      const bool useOrder = (regionOrder_.size() == nreg);
+      for (unsigned int k = 0; k < nreg; ++k) {
+        const unsigned int ireg = useOrder ? regionOrder_[k] : k;
+        assert(ireg < nreg);
+        const l1ct::PFRegionEmu &region = pfinputs[ireg].region;
+        const l1ct::OutputRegion &pf = pfouts[ireg];
+        for (unsigned int t = 0; t < nTicks_; ++t) {
+          for (unsigned int l = 0; l < nl; ++l) {
+            l1ct::pfsorter::PFParticleEmu p;
+            if (l < nlc) {
+              unsigned int s = nTicks_ * l + t;
+              if (s < nSlotsCharged_ && s < pf.pfcharged.size())
+                p.set(pf.pfcharged[s]);
+            } else {
+              unsigned int s = nTicks_ * (l - nlc) + t;
+              if (s < nSlotsNeutral_ && s < pf.pfneutral.size())
+                p.set(pf.pfneutral[s], l1ct::puppiWgt_t(1.0));
+            }
+            l1ct::PuppiObjEmu obj = l1ct::pfsorter::toPuppi(region, p);
+            if (obj.hwPt == 0)
+              continue;
+            if (links[l].size() < nDepth_) {
+              links[l].push_back(obj);
+              nIn_++;
+            } else {
+              nDropped_++;
+            }
+          }
+        }
+      }
+      return nIn_;
     }
 
-    // same, fed with the objects the tree would hold
-    bool step(bool newEvent, const std::vector<l1ct::PuppiObjEmu> &inputs, l1ct::PuppiObjEmu &out) {
-      out.clear();
-      return false;
-    }
-
-    // one event's worth of barrel PF candidates: an empty collection
-    void run(const std::vector<l1ct::PFRegionEmu> &regions,
-             const std::vector<std::vector<PFParticle>> &links,
-             std::vector<l1ct::PuppiObjEmu> &out) {
-      out.clear();
-    }
-
-    // same, keeping the output link as it is in firmware: one entry per clock cycle,
-    // all empty
-    void runStream(const std::vector<l1ct::PFRegionEmu> &regions,
-                   const std::vector<std::vector<PFParticle>> &links,
-                   std::vector<l1ct::PuppiObjEmu> &stream,
-                   bool continuous = false) {
+    // One event, keeping the output as it is in firmware: nClocks() * nOutputs() entries,
+    // entry nOutputs() * clock + fiber for that fiber and clock, empty if nothing is sent.
+    void runStream(const std::vector<l1ct::PFInputRegion> &pfinputs,
+                   const std::vector<l1ct::OutputRegion> &pfouts,
+                   std::vector<l1ct::PuppiObjEmu> &stream) {
+      std::vector<std::vector<l1ct::PuppiObjEmu>> links;
+      makeLinks(pfinputs, pfouts, links);
+      const unsigned int nl = links.size();
+      std::vector<unsigned int> rd(nl, 0);
       stream.clear();
+      stream.resize(nClocks_ * nOutputs_);
+      for (auto &o : stream)
+        o.clear();
+      for (unsigned int clk = 0; clk < nClocks_; ++clk) {
+        unsigned int f = 0;
+        for (unsigned int l = 0; l < nl && f < nOutputs_; ++l) {
+          if (rd[l] < links[l].size()) {
+            stream[nOutputs_ * clk + f++] = links[l][rd[l]++];
+            nOut_++;
+          }
+        }
+      }
+      for (unsigned int l = 0; l < nl; ++l)
+        nDropped_ += links[l].size() - rd[l];
+      if (nDropped_)
+        dbgCout() << "In PFSorterBarrel, " << nDropped_ << " candidates could not be sent (" << nOut_ << " sent)."
+                  << std::endl;
     }
+
+    // same, with only the objects sent, fiber by fiber within a clock
+    void run(const std::vector<l1ct::PFInputRegion> &pfinputs,
+             const std::vector<l1ct::OutputRegion> &pfouts,
+             std::vector<l1ct::PuppiObjEmu> &out) {
+      std::vector<l1ct::PuppiObjEmu> stream;
+      runStream(pfinputs, pfouts, stream);
+      for (const auto &o : stream) {
+        if (o.hwPt != 0)
+          out.push_back(o);
+      }
+    }
+
+    // the entry point of L1TCorrelatorLayer1Producer: event.sortedpf in the firmware layout
+    void run(l1ct::Event &event) override { runStream(event.pfinputs, event.out, event.sortedpf); }
+
+  private:
+    unsigned int nSlotsCharged_, nSlotsNeutral_, nTicks_, nOutputs_, nClocks_, nDepth_;
+    std::vector<uint32_t> regionOrder_;
+    unsigned int nIn_ = 0, nOut_ = 0, nDropped_ = 0;
   };
 
 }  // namespace l1ct

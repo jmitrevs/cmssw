@@ -258,6 +258,15 @@ barrelWriterDebugPFOutConfigsAPx = _barrelWriterOutputOnly.clone(
     debugFileName = cms.string("l1BarrelApx-pfout")
 )
 
+# the PF scouting fibers (the barrel pfsorter output), 162 words per event and fiber
+barrelWriterScoutingConfigsAPx = _barrelWriterOutputOnly.clone(
+    fileFormat = cms.string("APx"),
+    outputLinksPuppi = cms.vuint32(),
+    outputLinkEgamma = cms.int32(-1),
+    outputLinksSortedPF = cms.vuint32(*range(3)),
+    outputFileName = cms.string("l1BarrelApx-scouting")
+)
+
 barrelWriterDebugEGConfigsAPx = _barrelWriterOutputOnly.clone(
     fileFormat = cms.string("APx"),
     nEGElectron = cms.uint32(10),

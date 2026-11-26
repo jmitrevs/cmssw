@@ -184,7 +184,8 @@ if not args.patternFilesOFF:
                                                                     barrelOutputWriterConfigsAPx,
                                                                     barrelWriterDebugPFInConfigsAPx,
                                                                     barrelWriterDebugPFOutConfigsAPx,
-                                                                    barrelWriterDebugEGConfigsAPx
+                                                                    barrelWriterDebugEGConfigsAPx,
+                                                                    barrelWriterScoutingConfigsAPx
                                                                     )
     # process.l1tLayer1BarrelSerenity.patternWriters = cms.untracked.VPSet(*barrelSerenityTM18WriterConfigs)
     # process.l1tLayer1BarrelSerenityElliptic.patternWriters = cms.untracked.VPSet(*barrelSerenityTM18WriterConfigs)

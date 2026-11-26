@@ -351,7 +351,8 @@ L1TCorrelatorLayer1Producer::L1TCorrelatorLayer1Producer(const edm::ParameterSet
   } else if (pfSorterAlgo == "Fwd") {
     l1pfsorter_ = std::make_unique<l1ct::PFSorterFwdEmulator>();
   } else if (pfSorterAlgo == "Barrel") {
-    l1pfsorter_ = std::make_unique<l1ct::PFSorterBarrelEmulator>();
+    l1pfsorter_ =
+        std::make_unique<l1ct::PFSorterBarrelEmulator>(iConfig.getParameter<edm::ParameterSet>("pfSorterParameters"));
   } else if (pfSorterAlgo != "None")
     throw cms::Exception("Configuration", "Unsupported pfSorterAlgo");
 
@@ -472,12 +473,12 @@ void L1TCorrelatorLayer1Producer::fillDescriptions(edm::ConfigurationDescription
                    "PFAlgo2HGC" >> getParDesc<l1ct::PFAlgo2HGCEmulator>("pfAlgo") or
                    "PFAlgoDummy" >> getParDesc<l1ct::PFAlgoDummyEmulator>("pfAlgo"));
   // PF sorter: which one runs (if any) is chosen by pfSorterAlgo, since pfAlgo can't tell
-  // apart all the regions (the forward and HF ones both use PFAlgoDummy). The endcap one
-  // is configured with pfSorterParameters; the forward one follows the fixed link layout
-  // of the fwdcalo streams and the barrel one is not written yet, so neither takes any.
+  // apart all the regions (the forward and HF ones both use PFAlgoDummy). The endcap and
+  // barrel ones are configured with pfSorterParameters; the forward one follows the fixed
+  // link layout of the fwdcalo streams, so it takes none.
   desc.ifValue(edm::ParameterDescription<std::string>("pfSorterAlgo", "None", true),
                "None" >> emptyGroup or "Endcap" >> getParDesc<l1ct::PFSorterEmulator>("pfSorter") or
-                   "Fwd" >> emptyGroup or "Barrel" >> emptyGroup);
+                   "Fwd" >> emptyGroup or "Barrel" >> getParDesc<l1ct::PFSorterBarrelEmulator>("pfSorter"));
   // Puppi
   desc.ifValue(edm::ParameterDescription<std::string>("puAlgo", "LinearizedPuppi", true),
                "LinearizedPuppi" >> getParDesc<l1ct::LinPuppiEmulator>("puAlgo"));

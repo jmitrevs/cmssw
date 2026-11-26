@@ -43,7 +43,7 @@ private:
   uint32_t gctNumberOfObjects_;
   uint32_t gttLatency_;
 
-  std::vector<uint32_t> outputRegions_, outputLinksPuppi_;
+  std::vector<uint32_t> outputRegions_, outputLinksPuppi_, outputLinksSortedPF_;
   unsigned int nPuppiFramesPerRegion_;
   int32_t outputBoard_, outputLinkEgamma_;
   uint32_t nEgammaObjectsOut_;
@@ -102,6 +102,7 @@ private:
   void writeGMT(const l1ct::Event& event, l1t::demo::EventData& out);
   void writeGTT(const l1ct::Event& event, l1t::demo::EventData& out);
   void writePuppi(const l1ct::Event& event, l1t::demo::EventData& out);
+  void writeSortedPF(const l1ct::Event& event, l1t::demo::EventData& out);
   void writeEgamma(const l1ct::OutputBoard& egboard, std::vector<ap_uint<64>>& out);
   void writeEgamma(const l1ct::Event& event, l1t::demo::EventData& out);
   void writeDebugs(const l1ct::Event& event, l1t::demo::EventData& out);
